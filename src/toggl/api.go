@@ -172,6 +172,9 @@ func (toggl Toggl) GetRunningTimeEntry() TogglTimeEntry {
 			panic(err)
 		}
 		for _, child := range jsonParsed.Children() {
+			if child.String() == "null" {
+				return timeEntry
+			}
 			_timeEntry := child.Data().(map[string]interface{})
 			var tags []string
 			var description string

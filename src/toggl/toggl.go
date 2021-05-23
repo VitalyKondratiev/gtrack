@@ -91,12 +91,18 @@ func (toggl Toggl) StartIssueTracking(projectKey string, taskName string) {
 	timeEntry := toggl.StartTimeEntry(project.Id, taskName)
 	if timeEntry.Id != 0 {
 		fmt.Printf("Time tracking for %s started!\n", timeEntry.Description)
+		return
 	}
+	fmt.Println("You shouldn't have seen this text")
 }
 
 func (toggl Toggl) StopIssueTracking() {
 	timeEntry := toggl.GetRunningTimeEntry()
 	if timeEntry.Id != 0 {
-		toggl.StopTimeEntry(timeEntry)
+		if toggl.StopTimeEntry(timeEntry) {
+			fmt.Printf("Time tracking for %s stopped!\n", timeEntry.Description)
+			return
+		}
 	}
+	fmt.Println("There is nothing to stop (or you found an error, but not likely)!")
 }
