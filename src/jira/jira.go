@@ -3,6 +3,7 @@ package jira
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/manifoldco/promptui"
 )
@@ -65,4 +66,13 @@ func (jira Jira) SelectIssue() JiraIssue {
 		os.Exit(1)
 	}
 	return issues[index]
+}
+
+func (jira Jira) CommitIssues(durations map[string]int, startTimes map[string]time.Time) bool {
+	state := true
+	for issueKey, issueDuration := range durations {
+		fmt.Printf("%v - %v - %v\n", issueKey, issueDuration, startTimes[issueKey])
+		state = false
+	}
+	return state
 }

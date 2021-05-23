@@ -2,6 +2,7 @@ package toggl
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/manifoldco/promptui"
 )
@@ -15,6 +16,20 @@ func (togglTimeEntry TogglTimeEntry) IsUncommitedEntry() bool {
 		}
 	}
 	return false
+}
+
+func (togglTimeEntry TogglTimeEntry) IsCurrent() bool {
+	return togglTimeEntry.duration < 0
+}
+
+func (togglTimeEntry TogglTimeEntry) GetDuration() int {
+	if togglTimeEntry.duration >= 0 {
+		return togglTimeEntry.duration
+	} else {
+		startTime := time.Unix(int64(togglTimeEntry.duration)*-1, 0)
+		diff := time.Since(startTime)
+		return int(diff.Seconds())
+	}
 }
 
 func (toggl Toggl) IsLoggedIn() bool {
@@ -93,7 +108,7 @@ func (toggl Toggl) StartIssueTracking(projectKey string, taskName string) {
 		fmt.Printf("Time tracking for %s started!\n", timeEntry.Description)
 		return
 	}
-	fmt.Println("You shouldn't have seen this text")
+	fmt.Println("You shouldn't have seen this text!")
 }
 
 func (toggl Toggl) StopIssueTracking() {
@@ -105,4 +120,33 @@ func (toggl Toggl) StopIssueTracking() {
 		}
 	}
 	fmt.Println("There is nothing to stop (or you found an error, but not likely)!")
+}
+
+func (toggl Toggl) CommitIssues(timeEntries []TogglTimeEntry, commit bool) (bool, map[string]int, map[string]time.Time) {
+	state := true
+	timeEntry := toggl.GetRunningTimeEntry()
+	if timeEntry.Id != 0 {
+		if toggl.StopTimeEntry(timeEntry) {
+			fmt.Printf("Time tracking for %s stopped!\n", timeEntry.Description)
+		}
+	}
+	durations := make(map[string]int)
+	startTimes := make(map[string]time.Time)
+	for _, _timeEntry := range timeEntries {
+		if _timeEntry.IsUncommitedEntry() || !commit {
+			tags := []string{}
+			if !commit {
+				tags = append(tags, tagUncommitedName)
+			}
+			untagState := toggl.UpdateTimeEntryTags(_timeEntry, tags)
+			if !untagState {
+				state = false
+			} else {
+				durations[_timeEntry.Description] = timeEntry.GetDuration()
+				time, _ := time.Parse(time.RFC3339, _timeEntry.Start)
+				startTimes[_timeEntry.Description] = time
+			}
+		}
+	}
+	return state, durations, startTimes
 }

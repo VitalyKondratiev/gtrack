@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
-	"time"
 
 	"./src/config"
 	"./src/helpers"
@@ -27,6 +26,8 @@ func main() {
 		CommandStart()
 	case "stop":
 		CommandStop()
+	case "commit":
+		CommandCommit()
 	case "help":
 		gconfig := (config.GlobalConfig{}).LoadConfig()
 		fmt.Print(gconfig.Jira.Username)
@@ -37,23 +38,23 @@ func main() {
 }
 
 func CommandAuth() {
-	jira := (jira.Jira{}).SetConfig()
-	if !jira.IsLoggedIn() {
+	_jira := (jira.Jira{}).SetConfig()
+	if !_jira.IsLoggedIn() {
 		return
 	}
-	toggl := (toggl.Toggl{}).SetConfig()
-	if !toggl.IsLoggedIn() {
+	_toggl := (toggl.Toggl{}).SetConfig()
+	if !_toggl.IsLoggedIn() {
 		return
 	}
-	(config.GlobalConfig{}).SetConfig(jira.Config, toggl.Config).SaveConfig()
+	(config.GlobalConfig{}).SetConfig(_jira.Config, _toggl.Config).SaveConfig()
 }
 
 func CommandList() {
 	gconfig := (config.GlobalConfig{}).LoadConfig()
-	toggl := toggl.Toggl{Config: gconfig.Toggl}
-	jira := jira.Jira{Config: gconfig.Jira}
+	_toggl := toggl.Toggl{Config: gconfig.Toggl}
+	_jira := jira.Jira{Config: gconfig.Jira}
 
-	togglUsername, _ := toggl.GetUser()
+	togglUsername, _ := _toggl.GetUser()
 	const padding = 3
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, padding, ' ', tabwriter.StripEscape)
 	fmt.Fprintf(writer,
@@ -82,20 +83,18 @@ func CommandList() {
 		"---------------",
 	)
 
-	timeEntries := toggl.GetTimeEntries()
+	timeEntries := _toggl.GetTimeEntries()
 	totalUncommitedTime := 0
-	for _, issue := range jira.GetAssignedIssues() {
+	for _, issue := range _jira.GetAssignedIssues() {
 		trackingStatus := "-"
 		uncommitedTime := 0
 		for _, _timeEntry := range timeEntries {
 			if _timeEntry.Description == issue.Key && _timeEntry.IsUncommitedEntry() {
-				if _timeEntry.Duration > 0 {
-					uncommitedTime += _timeEntry.Duration
-				} else {
-					startTime := time.Unix(int64(_timeEntry.Duration)*-1, 0)
-					diff := time.Since(startTime)
-					uncommitedTime += int(diff.Seconds())
+				uncommitedTime += _timeEntry.GetDuration()
+				if _timeEntry.IsCurrent() {
 					trackingStatus = "current"
+				} else {
+					trackingStatus = "-"
 				}
 			}
 		}
@@ -119,16 +118,37 @@ func CommandList() {
 
 func CommandStart() {
 	gconfig := (config.GlobalConfig{}).LoadConfig()
-	jira := jira.Jira{Config: gconfig.Jira}
-	toggl := toggl.Toggl{Config: gconfig.Toggl}
-	issue := jira.SelectIssue()
-	toggl.StartIssueTracking(issue.ProjectKey, issue.Key)
+	_jira := jira.Jira{Config: gconfig.Jira}
+	_toggl := toggl.Toggl{Config: gconfig.Toggl}
+	issue := _jira.SelectIssue()
+	_toggl.StartIssueTracking(issue.ProjectKey, issue.Key)
 }
 
 func CommandStop() {
 	gconfig := (config.GlobalConfig{}).LoadConfig()
 	toggl := toggl.Toggl{Config: gconfig.Toggl}
 	toggl.StopIssueTracking()
+}
+
+func CommandCommit() {
+	gconfig := (config.GlobalConfig{}).LoadConfig()
+	_jira := jira.Jira{Config: gconfig.Jira}
+	_toggl := toggl.Toggl{Config: gconfig.Toggl}
+	timeEntries := _toggl.GetTimeEntries()
+	var uncommitedTimeEntries []toggl.TogglTimeEntry
+	for _, _timeEntry := range timeEntries {
+		if _timeEntry.IsUncommitedEntry() {
+			uncommitedTimeEntries = append(uncommitedTimeEntries, _timeEntry)
+		}
+	}
+	togglState, durations, startTimes := _toggl.CommitIssues(uncommitedTimeEntries, true)
+	if togglState {
+		jiraState := _jira.CommitIssues(durations, startTimes)
+		if !jiraState {
+			_toggl.CommitIssues(uncommitedTimeEntries, false)
+			fmt.Println("FACK")
+		}
+	}
 }
 
 // CommandHelp : shows all available commands
@@ -139,7 +159,7 @@ func CommandHelp() {
 	commands["list"] = "list of tasks assigned to you"
 	commands["start"] = "start timetracking for selected task"
 	commands["stop"] = "stop timetracking for selected task"
-	// commands["commit"] = "send your worklog to Jira"
+	commands["commit"] = "send your worklog to Jira"
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, padding, ' ', tabwriter.StripEscape)
 	fmt.Println("List of avalaible commands:")
 	for command, description := range commands {

@@ -28,7 +28,7 @@ type TogglTimeEntry struct {
 	Id          int
 	Description string
 	Tags        []string
-	Duration    int
+	duration    int
 	Start       string
 	Stop        string
 }

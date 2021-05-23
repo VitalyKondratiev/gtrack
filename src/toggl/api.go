@@ -140,8 +140,10 @@ func (toggl Toggl) GetTimeEntries() []TogglTimeEntry {
 			var tags []string
 			var description string
 			var stop string
-			for _, tag := range _timeEntry["tags"].([]interface{}) {
-				tags = append(tags, tag.(string))
+			if _timeEntry["tags"] != nil {
+				for _, tag := range _timeEntry["tags"].([]interface{}) {
+					tags = append(tags, tag.(string))
+				}
 			}
 			if _timeEntry["description"] != nil {
 				description = _timeEntry["description"].(string)
@@ -153,7 +155,7 @@ func (toggl Toggl) GetTimeEntries() []TogglTimeEntry {
 				Id:          int(_timeEntry["id"].(float64)),
 				Description: description,
 				Tags:        tags,
-				Duration:    int(_timeEntry["duration"].(float64)),
+				duration:    int(_timeEntry["duration"].(float64)),
 				Start:       _timeEntry["start"].(string),
 				Stop:        stop,
 			}
@@ -178,8 +180,10 @@ func (toggl Toggl) GetRunningTimeEntry() TogglTimeEntry {
 			_timeEntry := child.Data().(map[string]interface{})
 			var tags []string
 			var description string
-			for _, tag := range _timeEntry["tags"].([]interface{}) {
-				tags = append(tags, tag.(string))
+			if _timeEntry["tags"] != nil {
+				for _, tag := range _timeEntry["tags"].([]interface{}) {
+					tags = append(tags, tag.(string))
+				}
 			}
 			if _timeEntry["description"] != nil {
 				description = _timeEntry["description"].(string)
@@ -188,7 +192,7 @@ func (toggl Toggl) GetRunningTimeEntry() TogglTimeEntry {
 				Id:          int(_timeEntry["id"].(float64)),
 				Description: description,
 				Tags:        tags,
-				Duration:    int(_timeEntry["duration"].(float64)),
+				duration:    int(_timeEntry["duration"].(float64)),
 				Start:       _timeEntry["start"].(string),
 			}
 		}
@@ -278,7 +282,7 @@ func (toggl Toggl) CreateTimeEntry(projectId int, description string) TogglTimeE
 			Id:          int(jsonParsed.S("data").Data().(map[string]interface{})["id"].(float64)),
 			Description: description,
 			Tags:        []string{tagUncommitedName},
-			Duration:    0,
+			duration:    0,
 			Start:       jsonParsed.S("data").Data().(map[string]interface{})["start"].(string),
 		}
 	}
@@ -298,7 +302,7 @@ func (toggl Toggl) StartTimeEntry(projectId int, description string) TogglTimeEn
 			Id:          int(jsonParsed.S("data").Data().(map[string]interface{})["id"].(float64)),
 			Description: description,
 			Tags:        []string{tagUncommitedName},
-			Duration:    0,
+			duration:    0,
 			Start:       jsonParsed.S("data").Data().(map[string]interface{})["start"].(string),
 		}
 	}
@@ -308,5 +312,15 @@ func (toggl Toggl) StartTimeEntry(projectId int, description string) TogglTimeEn
 func (toggl Toggl) StopTimeEntry(timeEntry TogglTimeEntry) bool {
 	jsonObj := gabs.New()
 	_, statusCode := toggl.apiPutData("time_entries/"+strconv.Itoa(timeEntry.Id)+"/stop", jsonObj.Bytes())
+	return statusCode == 200
+}
+
+func (toggl Toggl) UpdateTimeEntryTags(timeEntry TogglTimeEntry, tags []string) bool {
+	jsonObj := gabs.New()
+	jsonObj.ArrayP("time_entry.tags")
+	for _, tag := range tags {
+		jsonObj.ArrayAppendP(tag, "time_entry.tags")
+	}
+	_, statusCode := toggl.apiPutData("time_entries/"+strconv.Itoa(timeEntry.Id), jsonObj.Bytes())
 	return statusCode == 200
 }
