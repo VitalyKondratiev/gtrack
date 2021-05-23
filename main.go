@@ -141,12 +141,32 @@ func CommandCommit() {
 			uncommitedTimeEntries = append(uncommitedTimeEntries, _timeEntry)
 		}
 	}
+	uncommitedCount := len(uncommitedTimeEntries)
+	if uncommitedCount == 0 {
+		fmt.Println("Notning to commit!")
+	}
 	togglState, durations, startTimes := _toggl.CommitIssues(uncommitedTimeEntries, true)
 	if togglState {
-		jiraState := _jira.CommitIssues(durations, startTimes)
+		issues := make(map[string]jira.JiraIssue)
+		for _, _issue := range _jira.GetAssignedIssues() {
+			if durations[_issue.Key] != 0 {
+				issues[_issue.Key] = _issue
+			}
+		}
+		jiraState, rejectedWorklogs := _jira.CommitIssues(issues, durations, startTimes)
 		if !jiraState {
-			_toggl.CommitIssues(uncommitedTimeEntries, false)
-			fmt.Println("FACK")
+			fmt.Println(rejectedWorklogs)
+			var rejectedEntries []toggl.TogglTimeEntry
+			for _, _timeEntry := range uncommitedTimeEntries {
+				for _, rejectedKey := range rejectedWorklogs {
+					if _timeEntry.Description == rejectedKey {
+						rejectedEntries = append(uncommitedTimeEntries, _timeEntry)
+					}
+				}
+			}
+			_toggl.CommitIssues(rejectedEntries, false)
+		} else {
+			fmt.Printf("Successfully commited %v issues!\n", uncommitedCount)
 		}
 	}
 }

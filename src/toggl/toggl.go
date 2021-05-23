@@ -142,7 +142,7 @@ func (toggl Toggl) CommitIssues(timeEntries []TogglTimeEntry, commit bool) (bool
 			if !untagState {
 				state = false
 			} else {
-				durations[_timeEntry.Description] = timeEntry.GetDuration()
+				durations[_timeEntry.Description] = _timeEntry.GetDuration()
 				time, _ := time.Parse(time.RFC3339, _timeEntry.Start)
 				startTimes[_timeEntry.Description] = time
 			}

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Jeffail/gabs"
 )
@@ -59,6 +60,25 @@ func (jira Jira) apiGetData(apiMethod string) ([]byte, int) {
 	data, _ := ioutil.ReadAll(resp.Body)
 	return data, resp.StatusCode
 }
+func (jira Jira) apiPostData(apiMethod string, payload []byte) ([]byte, int) {
+	jira = jira.authenticate()
+	requestBody := bytes.NewBuffer(payload)
+	client := http.Client{}
+	req, err := http.NewRequest("POST", jira.getApiPath()+apiMethod, requestBody)
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	authCookie := &http.Cookie{Name: jira.cookieName, Value: jira.cookieValue, HttpOnly: true}
+	req.AddCookie(authCookie)
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	data, _ := ioutil.ReadAll(resp.Body)
+	return data, resp.StatusCode
+}
 
 func (jira Jira) GetAssignedIssues() []JiraIssue {
 	data, statusCode := jira.apiGetData("search?jql=assignee=" + jira.Config.Username + "&fields=summary,project")
@@ -81,4 +101,13 @@ func (jira Jira) GetAssignedIssues() []JiraIssue {
 		}
 	}
 	return tasks
+}
+
+func (jira Jira) SetWorklogEntry(issueId int, duration int, startTime time.Time) bool {
+	jsonObj := gabs.New()
+	jsonObj.SetP("", "comment")
+	jsonObj.SetP(startTime.Format("2006-01-02T15:04:05.000+0000"), "started")
+	jsonObj.SetP(duration, "timeSpentSeconds")
+	_, statusCode := jira.apiPostData("issue/"+strconv.Itoa(issueId)+"/worklog", jsonObj.Bytes())
+	return statusCode == 201
 }
