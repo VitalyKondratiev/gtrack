@@ -144,6 +144,7 @@ func CommandCommit() {
 	uncommitedCount := len(uncommitedTimeEntries)
 	if uncommitedCount == 0 {
 		fmt.Println("Notning to commit!")
+		return
 	}
 	togglState, durations, startTimes := _toggl.CommitIssues(uncommitedTimeEntries, true)
 	if togglState {

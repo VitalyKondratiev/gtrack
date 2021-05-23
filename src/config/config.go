@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/user"
@@ -53,7 +54,8 @@ func (config GlobalConfig) LoadConfig() GlobalConfig {
 	configPath := filepath.Join(dir, userConfigPath)
 	configFile, err := ioutil.ReadFile(configPath + "/" + userConfigName)
 	if err != nil {
-
+		fmt.Println("Configuration file not found, try to auth")
+		os.Exit(1)
 		return config
 	}
 	_ = json.Unmarshal([]byte(configFile), &config)
