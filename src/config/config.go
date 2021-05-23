@@ -18,7 +18,8 @@ type JiraConfig struct {
 }
 
 type TogglConfig struct {
-	ApiKey string `json:"apiKey"`
+	ApiKey      string `json:"apiKey"`
+	WorkspaceId int    `json:"workspaceId"`
 }
 
 type GlobalConfig struct {

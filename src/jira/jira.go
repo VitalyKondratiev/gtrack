@@ -1,37 +1,17 @@
 package jira
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"strconv"
+	"os"
 
-	"../config"
-	"github.com/Jeffail/gabs"
 	"github.com/manifoldco/promptui"
 )
-
-type Jira struct {
-	Credentials config.JiraConfig
-
-	isLoggedIn  bool
-	cookieName  string
-	cookieValue string
-}
-
-type JiraTask struct {
-	Id      int
-	Key     string
-	Summary string
-}
 
 func (jira Jira) IsLoggedIn() bool {
 	return jira.isLoggedIn
 }
 
-func (jira Jira) SetCredentials() Jira {
+func (jira Jira) SetConfig() Jira {
 	jira.isLoggedIn = false
 	prompt := promptui.Prompt{
 		Label: "Enter domain of your Jira instance",
@@ -40,7 +20,7 @@ func (jira Jira) SetCredentials() Jira {
 	if err != nil {
 		return jira
 	}
-	jira.Credentials.Domain = result
+	jira.Config.Domain = result
 
 	l_prompt := promptui.Prompt{
 		Label: "Enter your username",
@@ -49,7 +29,7 @@ func (jira Jira) SetCredentials() Jira {
 	if err != nil {
 		return jira
 	}
-	jira.Credentials.Username = result
+	jira.Config.Username = result
 
 	p_prompt := promptui.Prompt{
 		Label: "Enter your password",
@@ -58,77 +38,31 @@ func (jira Jira) SetCredentials() Jira {
 	if err != nil {
 		return jira
 	}
-	jira.Credentials.Password = result
+	jira.Config.Password = result
 
 	jira = jira.authenticate()
 
 	if jira.isLoggedIn {
-		fmt.Printf("You sucessfully logged in %s as %s\n", jira.Credentials.Domain, jira.Credentials.Username)
+		fmt.Printf("You sucessfully logged in %s as %s\n", jira.Config.Domain, jira.Config.Username)
 	}
 
 	return jira
 }
 
-func (jira Jira) authenticate() Jira {
-	postBody, _ := json.Marshal(map[string]string{
-		"username": jira.Credentials.Username,
-		"password": jira.Credentials.Password,
-	})
-	responseBody := bytes.NewBuffer(postBody)
-	resp, err := http.Post("https://"+jira.Credentials.Domain+"/rest/auth/1/session", "application/json", responseBody)
+func (jira Jira) SelectIssue() JiraIssue {
+	issues := jira.GetAssignedIssues()
+	w_prompt := promptui.Select{
+		Label: "Select issue",
+		Items: issues,
+		Templates: &promptui.SelectTemplates{
+			Active:   "{{ .Key | green }} - {{ printf \"%.35s...\" .Summary | green }}",
+			Inactive: "{{ .Key | white }} - {{ printf \"%.35s...\" .Summary | white }}",
+		},
+		HideSelected: true,
+	}
+	index, _, err := w_prompt.Run()
 	if err != nil {
-		return jira
+		os.Exit(1)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode == 200 {
-		data, _ := ioutil.ReadAll(resp.Body)
-		jsonParsed, err := gabs.ParseJSON(data)
-		if err != nil {
-			panic(err)
-		}
-		sessionName := jsonParsed.Path("session.name").Data().(string)
-		sessionValue := jsonParsed.Path("session.value").Data().(string)
-		jira.cookieName = sessionName
-		jira.cookieValue = sessionValue
-		jira.isLoggedIn = true
-		return jira
-	}
-	return jira
-}
-
-func (jira Jira) GetAssignedTasks() []JiraTask {
-	jira = jira.authenticate()
-	var tasks []JiraTask
-	client := http.Client{}
-	req, err := http.NewRequest("GET", "https://"+jira.Credentials.Domain+"/rest/api/latest/search?jql=assignee="+jira.Credentials.Username+"&fields=summary", nil)
-	if err != nil {
-		return nil
-	}
-	authCookie := &http.Cookie{Name: jira.cookieName, Value: jira.cookieValue, HttpOnly: true}
-	req.AddCookie(authCookie)
-	resp, err := client.Do(req)
-	if err != nil {
-		return tasks
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == 200 {
-		data, _ := ioutil.ReadAll(resp.Body)
-		jsonParsed, err := gabs.ParseJSON(data)
-		if err != nil {
-			panic(err)
-		}
-		//total := jsonParsed.Path("total").Data().(float64)
-		//fmt.Print(total)
-		for _, child := range jsonParsed.S("issues").Children() {
-			issue := child.Data().(map[string]interface{})
-			id, _ := strconv.Atoi(issue["id"].(string))
-			var name string
-			for _, value := range issue["fields"].(map[string]interface{}) {
-				name = value.(string)
-			}
-			task := JiraTask{Id: id, Key: issue["key"].(string), Summary: name}
-			tasks = append(tasks, task)
-		}
-	}
-	return tasks
+	return issues[index]
 }
