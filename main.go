@@ -109,12 +109,11 @@ func CommandList() {
 		totalUncommitedTime += uncommitedTime
 		if val, ok := displayIssues[_timeEntry.Description]; ok {
 			val.UncommitedTime += uncommitedTime
-			trackingStatus := "uncommited"
-			if (_timeEntry.IsCurrent()) {
-				trackingStatus = "current"
-			}
 			if (len(val.TrackingStatus) == 0) {
-				val.TrackingStatus = trackingStatus
+				val.TrackingStatus = "uncommited"
+			}
+			if (_timeEntry.IsCurrent()) {
+				val.TrackingStatus = "current"
 			}
 			displayIssues[_timeEntry.Description] = val
 		} else {
