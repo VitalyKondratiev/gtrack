@@ -125,10 +125,12 @@ func CommandList() {
 			notAssignedKeys = append(notAssignedKeys, _timeEntry.Description)
 		}
 	}
-	for _, unassignedIssue := range _jira.GetIssuesByField(notAssignedKeys, "key") {
-		displayIssue := displayIssues[unassignedIssue.Key]
-		displayIssue.Summary = unassignedIssue.Summary
-		displayIssues[unassignedIssue.Key] = displayIssue
+	if (len(notAssignedKeys) > 0) {
+		for _, unassignedIssue := range _jira.GetIssuesByField(notAssignedKeys, "key") {
+			displayIssue := displayIssues[unassignedIssue.Key]
+			displayIssue.Summary = unassignedIssue.Summary
+			displayIssues[unassignedIssue.Key] = displayIssue
+		}
 	}
 	keys := make([]string, 0, len(displayIssues))
 	for key := range displayIssues {
