@@ -68,16 +68,16 @@ func (jira Jira) SelectIssue() JiraIssue {
 	return issues[index]
 }
 
-func (jira Jira) CommitIssues(issues map[string]JiraIssue, durations map[string]int, startTimes map[string]time.Time) (bool, []string) {
+func (jira Jira) CommitIssues(issues []JiraIssue, durations map[string]int, startTimes map[string]time.Time) (bool, []string) {
 	var rejectedWorklogs []string
 	state := true
-	for issueKey, issue := range issues {
-		if durations[issueKey] < 60 {
-			durations[issueKey] = 60
+	for _, issue := range issues {
+		if durations[issue.Key] < 60 {
+			durations[issue.Key] = 60
 		}
-		issueState := jira.SetWorklogEntry(issue.Id, durations[issueKey], startTimes[issueKey])
+		issueState := jira.SetWorklogEntry(issue.Id, durations[issue.Key], startTimes[issue.Key])
 		if !issueState {
-			rejectedWorklogs = append(rejectedWorklogs, issueKey)
+			rejectedWorklogs = append(rejectedWorklogs, issue.Key)
 			state = false
 		}
 	}

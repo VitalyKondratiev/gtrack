@@ -111,7 +111,7 @@ func (jira Jira) GetIssuesByField(values []string, field string) []JiraIssue {
 	for _, value := range values {
 		statements = append(statements, fmt.Sprintf("%s=%s", field, value))
 	}
-	data, statusCode := jira.apiGetData("search?jql=" + strings.Join(statements, " or ") + "&fields=summary,project")
+	data, statusCode := jira.apiGetData("search?jql=" + strings.Join(statements, "%20or%20") + "&fields=summary,project")
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {

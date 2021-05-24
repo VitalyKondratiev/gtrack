@@ -186,15 +186,13 @@ func CommandCommit() {
 	}
 	togglState, durations, startTimes := _toggl.CommitIssues(uncommitedTimeEntries, true)
 	if togglState {
-		issues := make(map[string]jira.JiraIssue)
-		for _, _issue := range _jira.GetAssignedIssues() {
-			if durations[_issue.Key] != 0 {
-				issues[_issue.Key] = _issue
-			}
+		var issueKeys []string
+		for issueKey, _ := range durations {
+			issueKeys = append(issueKeys, issueKey)
 		}
+		issues := _jira.GetIssuesByField(issueKeys, "key")
 		jiraState, rejectedWorklogs := _jira.CommitIssues(issues, durations, startTimes)
 		if !jiraState {
-			fmt.Println(rejectedWorklogs)
 			var rejectedEntries []toggl.TogglTimeEntry
 			for _, _timeEntry := range uncommitedTimeEntries {
 				for _, rejectedKey := range rejectedWorklogs {
