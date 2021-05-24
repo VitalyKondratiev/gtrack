@@ -113,7 +113,9 @@ func CommandList() {
 			if (_timeEntry.IsCurrent()) {
 				trackingStatus = "current"
 			}
-			val.TrackingStatus = trackingStatus
+			if (len(val.TrackingStatus) == 0) {
+				val.TrackingStatus = trackingStatus
+			}
 			displayIssues[_timeEntry.Description] = val
 		} else {
 			displayIssues[_timeEntry.Description] = DisplayIssue{
