@@ -68,18 +68,29 @@ func (jira Jira) SelectIssue() JiraIssue {
 	return issues[index]
 }
 
-func (jira Jira) CommitIssues(issues []JiraIssue, durations map[string]int, startTimes map[string]time.Time) (bool, []string) {
-	var rejectedWorklogs []string
-	state := true
-	for _, issue := range issues {
-		if durations[issue.Key] < 60 {
-			durations[issue.Key] = 60
+func (jira Jira) CommitIssues(issues []JiraIssue, durationsByIssues map[string][]int, startTimesByIssues map[string][]time.Time) (bool, map[string][]int) {
+	rejectedWorklogs := make(map[string][]int)
+	if len(durationsByIssues) != len(startTimesByIssues) {
+		for _, issue := range issues {
+			rejectedWorklogs[issue.Key] = durationsByIssues[issue.Key]
 		}
-		issueState := jira.SetWorklogEntry(issue.Id, durations[issue.Key], startTimes[issue.Key])
-		if !issueState {
-			rejectedWorklogs = append(rejectedWorklogs, issue.Key)
-			state = false
+		return false, rejectedWorklogs
+	}
+	for _, issue := range issues {
+		if len(durationsByIssues[issue.Key]) != len(startTimesByIssues[issue.Key]) {
+			rejectedWorklogs[issue.Key] = durationsByIssues[issue.Key]
+			continue
+		}
+		issueState := true
+		for index, duration := range durationsByIssues[issue.Key] {
+			if duration < 60 {
+				duration = 60
+			}
+			issueState = jira.SetWorklogEntry(issue.Id, duration, startTimesByIssues[issue.Key][index])
+			if !issueState {
+				rejectedWorklogs[issue.Key] = append(rejectedWorklogs[issue.Key], duration)
+			}
 		}
 	}
-	return state, rejectedWorklogs
+	return len(rejectedWorklogs) == 0, rejectedWorklogs
 }

@@ -3,12 +3,12 @@ package jira
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"time"
-	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Jeffail/gabs"
 )

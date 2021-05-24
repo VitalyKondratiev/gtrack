@@ -122,7 +122,7 @@ func (toggl Toggl) StopIssueTracking() {
 	fmt.Println("There is nothing to stop (or you found an error, but not likely)!")
 }
 
-func (toggl Toggl) CommitIssues(timeEntries []TogglTimeEntry, commit bool) (bool, map[string]int, map[string]time.Time) {
+func (toggl Toggl) CommitIssues(timeEntries []TogglTimeEntry, commit bool) (bool, []string, map[int]int, map[int]time.Time) {
 	state := true
 	timeEntry := toggl.GetRunningTimeEntry()
 	if timeEntry.Id != 0 {
@@ -130,8 +130,10 @@ func (toggl Toggl) CommitIssues(timeEntries []TogglTimeEntry, commit bool) (bool
 			fmt.Printf("Time tracking for %s stopped!\n", timeEntry.Description)
 		}
 	}
-	durations := make(map[string]int)
-	startTimes := make(map[string]time.Time)
+	var issueKeys []string
+	timeEntriesCounter := 0
+	durations := make(map[int]int)
+	startTimes := make(map[int]time.Time)
 	for _, _timeEntry := range timeEntries {
 		if _timeEntry.IsUncommitedEntry() || !commit {
 			tags := []string{}
@@ -142,11 +144,13 @@ func (toggl Toggl) CommitIssues(timeEntries []TogglTimeEntry, commit bool) (bool
 			if !untagState {
 				state = false
 			} else {
-				durations[_timeEntry.Description] = _timeEntry.GetDuration()
-				time, _ := time.Parse(time.RFC3339, _timeEntry.Start)
-				startTimes[_timeEntry.Description] = time
+				issueKeys = append(issueKeys, _timeEntry.Description)
+				durations[timeEntriesCounter] = _timeEntry.GetDuration()
+				_time, _ := time.Parse(time.RFC3339, _timeEntry.Start)
+				startTimes[timeEntriesCounter] = _time
+				timeEntriesCounter++
 			}
 		}
 	}
-	return state, durations, startTimes
+	return state, issueKeys, durations, startTimes
 }

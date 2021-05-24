@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 	"sort"
+	"text/tabwriter"
+	"time"
 
 	"./src/config"
 	"./src/helpers"
@@ -13,8 +14,8 @@ import (
 )
 
 type DisplayIssue struct {
-	Key string
-	Summary string
+	Key            string
+	Summary        string
 	UncommitedTime int
 	TrackingStatus string
 }
@@ -93,8 +94,8 @@ func CommandList() {
 	displayIssues := make(map[string]DisplayIssue)
 	for _, issue := range _jira.GetAssignedIssues() {
 		displayIssues[issue.Key] = DisplayIssue{
-			Key: issue.Key,
-			Summary: issue.Summary,
+			Key:            issue.Key,
+			Summary:        issue.Summary,
 			TrackingStatus: "",
 			UncommitedTime: 0,
 		}
@@ -102,31 +103,31 @@ func CommandList() {
 	totalUncommitedTime := 0
 	var notAssignedKeys []string
 	for _, _timeEntry := range _toggl.GetTimeEntries() {
-		if (!_timeEntry.IsUncommitedEntry()) {
+		if !_timeEntry.IsUncommitedEntry() {
 			continue
 		}
 		uncommitedTime := _timeEntry.GetDuration()
 		totalUncommitedTime += uncommitedTime
 		if val, ok := displayIssues[_timeEntry.Description]; ok {
 			val.UncommitedTime += uncommitedTime
-			if (len(val.TrackingStatus) == 0) {
+			if len(val.TrackingStatus) == 0 {
 				val.TrackingStatus = "uncommited"
 			}
-			if (_timeEntry.IsCurrent()) {
+			if _timeEntry.IsCurrent() {
 				val.TrackingStatus = "current"
 			}
 			displayIssues[_timeEntry.Description] = val
 		} else {
 			displayIssues[_timeEntry.Description] = DisplayIssue{
-				Key: _timeEntry.Description,
-				Summary: "",
+				Key:            _timeEntry.Description,
+				Summary:        "",
 				TrackingStatus: "uncommited (not assigned)",
 				UncommitedTime: uncommitedTime,
 			}
 			notAssignedKeys = append(notAssignedKeys, _timeEntry.Description)
 		}
 	}
-	if (len(notAssignedKeys) > 0) {
+	if len(notAssignedKeys) > 0 {
 		for _, unassignedIssue := range _jira.GetIssuesByField(notAssignedKeys, "key") {
 			displayIssue := displayIssues[unassignedIssue.Key]
 			displayIssue.Summary = unassignedIssue.Summary
@@ -187,20 +188,26 @@ func CommandCommit() {
 		fmt.Println("Notning to commit!")
 		return
 	}
-	togglState, durations, startTimes := _toggl.CommitIssues(uncommitedTimeEntries, true)
+	togglState, issueKeys, durations, startTimes := _toggl.CommitIssues(uncommitedTimeEntries, true)
 	if togglState {
-		var issueKeys []string
-		for issueKey, _ := range durations {
-			issueKeys = append(issueKeys, issueKey)
-		}
 		issues := _jira.GetIssuesByField(issueKeys, "key")
-		jiraState, rejectedWorklogs := _jira.CommitIssues(issues, durations, startTimes)
+		durationsByIssue := make(map[string][]int)
+		startTimesByIssue := make(map[string][]time.Time)
+		for index, duration := range durations {
+			issueKey := issueKeys[index]
+			durationsByIssue[issueKey] = append(durationsByIssue[issueKey], duration)
+		}
+		for index, startTime := range startTimes {
+			issueKey := issueKeys[index]
+			startTimesByIssue[issueKey] = append(startTimesByIssue[issueKey], startTime)
+		}
+		jiraState, rejected := _jira.CommitIssues(issues, durationsByIssue, startTimesByIssue)
 		if !jiraState {
 			var rejectedEntries []toggl.TogglTimeEntry
-			for _, _timeEntry := range uncommitedTimeEntries {
-				for _, rejectedKey := range rejectedWorklogs {
-					if _timeEntry.Description == rejectedKey {
-						rejectedEntries = append(uncommitedTimeEntries, _timeEntry)
+			for _, timeEntry := range uncommitedTimeEntries {
+				for _, duration := range rejected[timeEntry.Description] {
+					if timeEntry.GetDuration() == duration {
+						rejectedEntries = append(rejectedEntries, timeEntry)
 					}
 				}
 			}
