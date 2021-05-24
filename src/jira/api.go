@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"fmt"
+	"strings"
 
 	"github.com/Jeffail/gabs"
 )
@@ -83,6 +85,33 @@ func (jira Jira) apiPostData(apiMethod string, payload []byte) ([]byte, int) {
 func (jira Jira) GetAssignedIssues() []JiraIssue {
 	data, statusCode := jira.apiGetData("search?jql=assignee=" + jira.Config.Username + "&fields=summary,project")
 	var tasks []JiraIssue
+	if statusCode == 200 {
+		jsonParsed, err := gabs.ParseJSON(data)
+		if err != nil {
+			panic(err)
+		}
+		for _, child := range jsonParsed.S("issues").Children() {
+			_issue := child.Data().(map[string]interface{})
+			id, _ := strconv.Atoi(_issue["id"].(string))
+			issue := JiraIssue{
+				Id:         id,
+				ProjectKey: child.Path("fields.project").Data().(map[string]interface{})["key"].(string),
+				Key:        _issue["key"].(string),
+				Summary:    child.S("fields").Data().(map[string]interface{})["summary"].(string),
+			}
+			tasks = append(tasks, issue)
+		}
+	}
+	return tasks
+}
+
+func (jira Jira) GetIssuesByField(values []string, field string) []JiraIssue {
+	var tasks []JiraIssue
+	var statements []string
+	for _, value := range values {
+		statements = append(statements, fmt.Sprintf("%s=%s", field, value))
+	}
+	data, statusCode := jira.apiGetData("search?jql=" + strings.Join(statements, " or ") + "&fields=summary,project")
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {

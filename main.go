@@ -4,12 +4,20 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+	"sort"
 
 	"./src/config"
 	"./src/helpers"
 	"./src/jira"
 	"./src/toggl"
 )
+
+type DisplayIssue struct {
+	Key string
+	Summary string
+	UncommitedTime int
+	TrackingStatus string
+}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -82,29 +90,59 @@ func CommandList() {
 		"---------------",
 		"---------------",
 	)
-
-	timeEntries := _toggl.GetTimeEntries()
-	totalUncommitedTime := 0
+	displayIssues := make(map[string]DisplayIssue)
 	for _, issue := range _jira.GetAssignedIssues() {
-		trackingStatus := "-"
-		uncommitedTime := 0
-		for _, _timeEntry := range timeEntries {
-			if _timeEntry.Description == issue.Key && _timeEntry.IsUncommitedEntry() {
-				uncommitedTime += _timeEntry.GetDuration()
-				if _timeEntry.IsCurrent() {
-					trackingStatus = "current"
-				} else {
-					trackingStatus = "-"
-				}
-			}
+		displayIssues[issue.Key] = DisplayIssue{
+			Key: issue.Key,
+			Summary: issue.Summary,
+			TrackingStatus: "",
+			UncommitedTime: 0,
 		}
+	}
+	totalUncommitedTime := 0
+	var notAssignedKeys []string
+	for _, _timeEntry := range _toggl.GetTimeEntries() {
+		if (!_timeEntry.IsUncommitedEntry()) {
+			continue
+		}
+		uncommitedTime := _timeEntry.GetDuration()
 		totalUncommitedTime += uncommitedTime
+		if val, ok := displayIssues[_timeEntry.Description]; ok {
+			val.UncommitedTime = uncommitedTime
+			trackingStatus := "uncommited"
+			if (_timeEntry.IsCurrent()) {
+				trackingStatus = "current"
+			}
+			val.TrackingStatus = trackingStatus
+			displayIssues[_timeEntry.Description] = val
+		} else {
+			displayIssues[_timeEntry.Description] = DisplayIssue{
+				Key: _timeEntry.Description,
+				Summary: "",
+				TrackingStatus: "uncommited (not assigned)",
+				UncommitedTime: uncommitedTime,
+			}
+			notAssignedKeys = append(notAssignedKeys, _timeEntry.Description)
+		}
+	}
+	for _, unassignedIssue := range _jira.GetIssuesByField(notAssignedKeys, "key") {
+		displayIssue := displayIssues[unassignedIssue.Key]
+		displayIssue.Summary = unassignedIssue.Summary
+		displayIssues[unassignedIssue.Key] = displayIssue
+	}
+	keys := make([]string, 0, len(displayIssues))
+	for key := range displayIssues {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		displayIssue := displayIssues[key]
 		fmt.Fprintf(writer,
 			"\t%v\t%.30v...\t%v\t%v\t\n",
-			issue.Key,
-			issue.Summary,
-			helpers.FormatTimeFromUnix(uncommitedTime),
-			trackingStatus,
+			displayIssue.Key,
+			displayIssue.Summary,
+			helpers.FormatTimeFromUnix(displayIssue.UncommitedTime),
+			displayIssue.TrackingStatus,
 		)
 	}
 	writer.Flush()
