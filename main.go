@@ -118,10 +118,14 @@ func CommandList() {
 			}
 			displayIssues[_timeEntry.Description] = val
 		} else {
+			trackingStatus := "uncommited"
+			if _timeEntry.IsCurrent() {
+				trackingStatus = "current"
+			}
 			displayIssues[_timeEntry.Description] = DisplayIssue{
 				Key:            _timeEntry.Description,
 				Summary:        "",
-				TrackingStatus: "uncommited (not assigned)",
+				TrackingStatus: fmt.Sprintf("%s (not assigned)", trackingStatus),
 				UncommitedTime: uncommitedTime,
 			}
 			notAssignedKeys = append(notAssignedKeys, _timeEntry.Description)
