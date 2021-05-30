@@ -38,8 +38,6 @@ func main() {
 	case "commit":
 		CommandCommit()
 	case "help":
-		gconfig := (config.GlobalConfig{}).LoadConfig()
-		fmt.Print(gconfig.Jira.Username)
 		CommandHelp()
 	default:
 		CommandHelp()
@@ -47,29 +45,51 @@ func main() {
 }
 
 func CommandAuth() {
-	_jira := (jira.Jira{}).SetConfig()
-	if !_jira.IsLoggedIn() {
-		return
+	gconfig := (config.GlobalConfig{}).LoadConfig(false)
+	if len(gconfig.Jira) != 0 {
+		switch choice := gconfig.ChangeConfiguration(); choice {
+		case 0:
+			// Change existing Jira account
+			// TODO: Select Jira instance and replace it
+			fmt.Println("Not realized yet...")
+		case 1:
+			// Add one more Jira account
+			_jira := (jira.Jira{}).SetConfig()
+			if !_jira.IsLoggedIn() {
+				os.Exit(1)
+			}
+			gconfig.Jira = append(gconfig.Jira, _jira.Config)
+			gconfig.SaveConfig()
+		case 2:
+			// Remove config
+			config.RemoveConfig()
+		}
+		os.Exit(0)
+	} else {
+		_jira := (jira.Jira{}).SetConfig()
+		if !_jira.IsLoggedIn() {
+			os.Exit(1)
+		}
+		_toggl := (toggl.Toggl{}).SetConfig()
+		if !_toggl.IsLoggedIn() {
+			os.Exit(1)
+		}
+		(config.GlobalConfig{}).SetConfig(_jira.Config, _toggl.Config).SaveConfig()
 	}
-	_toggl := (toggl.Toggl{}).SetConfig()
-	if !_toggl.IsLoggedIn() {
-		return
-	}
-	(config.GlobalConfig{}).SetConfig(_jira.Config, _toggl.Config).SaveConfig()
 }
 
 func CommandList() {
-	gconfig := (config.GlobalConfig{}).LoadConfig()
+	gconfig := (config.GlobalConfig{}).LoadConfig(true)
 	_toggl := toggl.Toggl{Config: gconfig.Toggl}
-	_jira := jira.Jira{Config: gconfig.Jira}
+	_jira := jira.Jira{Config: gconfig.Jira[0]}
 
 	togglUsername, _ := _toggl.GetUser()
 	const padding = 3
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, padding, ' ', tabwriter.StripEscape)
 	fmt.Fprintf(writer,
 		"\t%v:\t%v\t\n",
-		gconfig.Jira.Domain,
-		gconfig.Jira.Username,
+		gconfig.Jira[0].Domain,
+		gconfig.Jira[0].Username,
 	)
 	fmt.Fprintf(writer,
 		"\ttoggl.com:\t%v\t\n",
@@ -163,22 +183,22 @@ func CommandList() {
 }
 
 func CommandStart() {
-	gconfig := (config.GlobalConfig{}).LoadConfig()
-	_jira := jira.Jira{Config: gconfig.Jira}
+	gconfig := (config.GlobalConfig{}).LoadConfig(true)
+	_jira := jira.Jira{Config: gconfig.Jira[0]}
 	_toggl := toggl.Toggl{Config: gconfig.Toggl}
 	issue := _jira.SelectIssue()
 	_toggl.StartIssueTracking(issue.ProjectKey, issue.Key)
 }
 
 func CommandStop() {
-	gconfig := (config.GlobalConfig{}).LoadConfig()
+	gconfig := (config.GlobalConfig{}).LoadConfig(true)
 	toggl := toggl.Toggl{Config: gconfig.Toggl}
 	toggl.StopIssueTracking()
 }
 
 func CommandCommit() {
-	gconfig := (config.GlobalConfig{}).LoadConfig()
-	_jira := jira.Jira{Config: gconfig.Jira}
+	gconfig := (config.GlobalConfig{}).LoadConfig(true)
+	_jira := jira.Jira{Config: gconfig.Jira[0]}
 	_toggl := toggl.Toggl{Config: gconfig.Toggl}
 	timeEntries := _toggl.GetTimeEntries()
 	var uncommitedTimeEntries []toggl.TogglTimeEntry

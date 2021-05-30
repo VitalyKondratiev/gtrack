@@ -13,8 +13,16 @@ import (
 	"github.com/Jeffail/gabs"
 )
 
+func getJiraDomain(domain string) string {
+	if strings.HasPrefix(domain, "http://") || strings.HasPrefix(domain, "https://") {
+		return domain
+	} else {
+		return "https://" + domain
+	}
+}
+
 func (jira Jira) getApiPath() string {
-	return "https://" + jira.Config.Domain + "/rest/api/latest/"
+	return getJiraDomain(jira.Config.Domain) + "/rest/api/latest/"
 }
 
 func (jira Jira) authenticate() Jira {
@@ -24,7 +32,7 @@ func (jira Jira) authenticate() Jira {
 		"password": jira.Config.Password,
 	})
 	responseBody := bytes.NewBuffer(postBody)
-	resp, err := http.Post("https://"+jira.Config.Domain+"/rest/auth/1/session", "application/json", responseBody)
+	resp, err := http.Post(getJiraDomain(jira.Config.Domain)+"/rest/auth/1/session", "application/json", responseBody)
 	if err != nil {
 		return jira
 	}
