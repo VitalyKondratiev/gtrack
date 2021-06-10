@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/manifoldco/promptui"
+	"../helpers"
 )
 
 func (jira Jira) IsLoggedIn() bool {
@@ -14,28 +14,19 @@ func (jira Jira) IsLoggedIn() bool {
 
 func (jira Jira) SetConfig() Jira {
 	jira.isLoggedIn = false
-	prompt := promptui.Prompt{
-		Label: "Enter domain of your Jira instance",
-	}
-	result, err := prompt.Run()
+	result, err := helpers.GetString("Enter domain of your Jira instance")
 	if err != nil {
 		return jira
 	}
 	jira.Config.Domain = result
 
-	l_prompt := promptui.Prompt{
-		Label: "Enter your username",
-	}
-	result, err = l_prompt.Run()
+	result, err = helpers.GetString("Enter your username")
 	if err != nil {
 		return jira
 	}
 	jira.Config.Username = result
 
-	p_prompt := promptui.Prompt{
-		Label: "Enter your password",
-	}
-	result, err = p_prompt.Run()
+	result, err = helpers.GetString("Enter your password")
 	if err != nil {
 		return jira
 	}
@@ -52,16 +43,11 @@ func (jira Jira) SetConfig() Jira {
 
 func (jira Jira) SelectIssue() JiraIssue {
 	issues := jira.GetAssignedIssues()
-	w_prompt := promptui.Select{
-		Label: "Select issue",
-		Items: issues,
-		Templates: &promptui.SelectTemplates{
-			Active:   "{{ .Key | green }} - {{ printf \"%.35s...\" .Summary | green }}",
-			Inactive: "{{ .Key | white }} - {{ printf \"%.35s...\" .Summary | white }}",
-		},
-		HideSelected: true,
-	}
-	index, _, err := w_prompt.Run()
+	index, err := helpers.GetVariant(
+		"Select issue",
+		issues,
+		"{{ .Key }} {{ printf \"-\" }} {{ printf \"%.35s...\" .Summary }}",
+	)
 	if err != nil {
 		os.Exit(1)
 	}

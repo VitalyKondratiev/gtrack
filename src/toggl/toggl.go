@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/manifoldco/promptui"
+	"../helpers"
 )
 
 const tagUncommitedName = "gtrack_uncommited"
@@ -37,10 +37,7 @@ func (toggl Toggl) IsLoggedIn() bool {
 }
 
 func (toggl Toggl) SetConfig() Toggl {
-	prompt := promptui.Prompt{
-		Label: "Enter API key of your Toggl.com account",
-	}
-	result, err := prompt.Run()
+	result, err := helpers.GetString("Enter API key of your Toggl.com account")
 	if err != nil {
 		toggl.isLoggedIn = false
 		return toggl
@@ -59,16 +56,11 @@ func (toggl Toggl) SetConfig() Toggl {
 
 	if toggl.isLoggedIn {
 		workspaces := toggl.GetWorkspaces()
-		w_prompt := promptui.Select{
-			Label: "Select workspace",
-			Items: workspaces,
-			Templates: &promptui.SelectTemplates{
-				Active:   "{{ .Name | green }}",
-				Inactive: "{{ .Name | white }}",
-			},
-			HideSelected: true,
-		}
-		index, _, err := w_prompt.Run()
+		index, err := helpers.GetVariant(
+			"Select workspace",
+			workspaces,
+			"{{ .Name }}",
+		)
 		if err != nil {
 			toggl.isLoggedIn = false
 			return toggl

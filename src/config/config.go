@@ -8,8 +8,9 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"../helpers"
+
 	"github.com/Jeffail/gabs"
-	"github.com/manifoldco/promptui"
 )
 
 const userConfigPath = "/.config/gtrack"
@@ -107,15 +108,11 @@ func updateConfigToV2(oldConfigFile []byte) GlobalConfig {
 }
 
 func (config GlobalConfig) ChangeConfiguration() int {
-	w_prompt := promptui.Select{
-		Label: "You already authorized in gtrack, select action",
-		Items: []string{"Change existing Jira account", "Add one more Jira account", "Remove config (after this you need run auth again)"},
-		Templates: &promptui.SelectTemplates{
-			Active:   "{{ . | green  }}",
-			Inactive: "{{ . | white  }}",
-		},
-	}
-	user_input, _, err := w_prompt.Run()
+	user_input, err := helpers.GetVariant(
+		"You already authorized in gtrack, select action",
+		[]string{"Change existing Jira account", "Add one more Jira account", "Remove config (after this you need run auth again)"},
+		"{{ . }} ",
+	)
 	if err != nil {
 		os.Exit(1)
 	}
