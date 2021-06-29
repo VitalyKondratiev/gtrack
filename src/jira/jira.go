@@ -68,6 +68,15 @@ func (jira Jira) SelectIssue() JiraIssue {
 	return issues[index]
 }
 
+func (jira Jira) GetIssueByKey(issueKey string) JiraIssue {
+	issues := jira.GetIssuesByField([]string{issueKey}, "key")
+	if len(issues) == 0 {
+		fmt.Println("Issue not found!")
+		os.Exit(1)
+	}
+	return issues[0]
+}
+
 func (jira Jira) CommitIssues(issues []JiraIssue, durationsByIssues map[string][]int, startTimesByIssues map[string][]time.Time) (bool, map[string][]int) {
 	rejectedWorklogs := make(map[string][]int)
 	if len(durationsByIssues) != len(startTimesByIssues) {

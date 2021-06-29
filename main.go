@@ -166,7 +166,12 @@ func CommandStart() {
 	gconfig := (config.GlobalConfig{}).LoadConfig()
 	_jira := jira.Jira{Config: gconfig.Jira}
 	_toggl := toggl.Toggl{Config: gconfig.Toggl}
-	issue := _jira.SelectIssue()
+	var issue jira.JiraIssue
+	if len(os.Args) < 3 {
+		issue = _jira.SelectIssue()
+	} else {
+		issue = _jira.GetIssueByKey(os.Args[2])
+	}
 	_toggl.StartIssueTracking(issue.ProjectKey, issue.Key)
 }
 
