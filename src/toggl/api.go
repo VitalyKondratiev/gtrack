@@ -251,7 +251,7 @@ func (toggl Toggl) CreateProject(projectName string) TogglProject {
 	return project
 }
 
-func populateTimeEntry(workspaceId int, projectId int, description string) *gabs.Container {
+func populateTimeEntry(workspaceId int, projectId int, description string, jiraTag string) *gabs.Container {
 	t := time.Now()
 	tZone, _ := t.Zone()
 	time := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d%02s:00",
@@ -266,12 +266,14 @@ func populateTimeEntry(workspaceId int, projectId int, description string) *gabs
 	jsonObj.SetP("gtrack", "time_entry.created_with")
 	jsonObj.ArrayP("time_entry.tags")
 	jsonObj.ArrayAppendP(tagUncommitedName, "time_entry.tags")
+	jsonObj.ArrayAppendP(jiraTag, "time_entry.tags")
 	return jsonObj
 }
 
-func (toggl Toggl) CreateTimeEntry(projectId int, description string) TogglTimeEntry {
+func (toggl Toggl) CreateTimeEntry(projectId int, description string, tagJiraDomain string) TogglTimeEntry {
 	var timeEntry TogglTimeEntry
-	jsonObj := populateTimeEntry(toggl.Config.WorkspaceId, projectId, description)
+	tagJiraDomain = "gtrack:" + tagJiraDomain
+	jsonObj := populateTimeEntry(toggl.Config.WorkspaceId, projectId, description, tagJiraDomain)
 	data, statusCode := toggl.apiPostData("time_entries", jsonObj.Bytes())
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
@@ -289,9 +291,10 @@ func (toggl Toggl) CreateTimeEntry(projectId int, description string) TogglTimeE
 	return timeEntry
 }
 
-func (toggl Toggl) StartTimeEntry(projectId int, description string) TogglTimeEntry {
+func (toggl Toggl) StartTimeEntry(projectId int, description string, tagJiraDomain string) TogglTimeEntry {
 	var timeEntry TogglTimeEntry
-	jsonObj := populateTimeEntry(toggl.Config.WorkspaceId, projectId, description)
+	tagJiraDomain = "gtrack:" + tagJiraDomain
+	jsonObj := populateTimeEntry(toggl.Config.WorkspaceId, projectId, description, tagJiraDomain)
 	data, statusCode := toggl.apiPostData("time_entries/start", jsonObj.Bytes())
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
@@ -301,7 +304,7 @@ func (toggl Toggl) StartTimeEntry(projectId int, description string) TogglTimeEn
 		timeEntry = TogglTimeEntry{
 			Id:          int(jsonParsed.S("data").Data().(map[string]interface{})["id"].(float64)),
 			Description: description,
-			Tags:        []string{tagUncommitedName},
+			Tags:        []string{tagUncommitedName, tagJiraDomain},
 			duration:    0,
 			Start:       jsonParsed.S("data").Data().(map[string]interface{})["start"].(string),
 		}

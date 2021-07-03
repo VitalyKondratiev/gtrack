@@ -18,6 +18,16 @@ func (togglTimeEntry TogglTimeEntry) IsUncommitedEntry() bool {
 	return false
 }
 
+func (togglTimeEntry TogglTimeEntry) IsJiraDomainEntry(jiraDomain string) bool {
+	tagJiraDomain := "gtrack:" + jiraDomain
+	for _, tag := range togglTimeEntry.Tags {
+		if tag == tagJiraDomain {
+			return true
+		}
+	}
+	return false
+}
+
 func (togglTimeEntry TogglTimeEntry) IsCurrent() bool {
 	return togglTimeEntry.duration < 0
 }
@@ -71,21 +81,29 @@ func (toggl Toggl) SetConfig() Toggl {
 	return toggl
 }
 
-func (toggl Toggl) renewTagOnWorkspace() {
+func (toggl Toggl) renewTagOnWorkspace(tagJiraDomain string) {
 	tags := toggl.GetWorkspaceTags()
+	tagJiraDomain = "gtrack:" + tagJiraDomain
 	var workspaceTag TogglWorkspaceTag
+	var jiraTag TogglWorkspaceTag
 	for _, _workspaceTag := range tags {
 		if tagUncommitedName == _workspaceTag.Name {
 			workspaceTag = _workspaceTag
+		}
+		if tagJiraDomain == _workspaceTag.Name {
+			jiraTag = _workspaceTag
 		}
 	}
 	if workspaceTag.Id == 0 {
 		_ = toggl.CreateTag(tagUncommitedName)
 	}
+	if jiraTag.Id == 0 {
+		_ = toggl.CreateTag(tagJiraDomain)
+	}
 }
 
-func (toggl Toggl) StartIssueTracking(projectKey string, taskName string) {
-	toggl.renewTagOnWorkspace()
+func (toggl Toggl) StartIssueTracking(projectKey string, taskName string, jiraDomain string) {
+	toggl.renewTagOnWorkspace(jiraDomain)
 	var project TogglProject
 	for _, _project := range toggl.GetProjects() {
 		if projectKey == _project.Name {
@@ -95,7 +113,7 @@ func (toggl Toggl) StartIssueTracking(projectKey string, taskName string) {
 	if project.Id == 0 {
 		project = toggl.CreateProject(projectKey)
 	}
-	timeEntry := toggl.StartTimeEntry(project.Id, taskName)
+	timeEntry := toggl.StartTimeEntry(project.Id, taskName, jiraDomain)
 	if timeEntry.Id != 0 {
 		fmt.Printf("Time tracking for %s started!\n", timeEntry.Description)
 		return

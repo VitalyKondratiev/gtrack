@@ -81,19 +81,25 @@ func CommandAuth() {
 func CommandList() {
 	gconfig := (config.GlobalConfig{}).LoadConfig(true)
 	_toggl := toggl.Toggl{Config: gconfig.Toggl}
-	_jira := jira.Jira{Config: gconfig.Jira[0]}
-
+	var _jira jira.Jira
+	if len(gconfig.Jira) > 1 {
+		jiraIndex := gconfig.SelectJiraInstance()
+		_jira = jira.Jira{Config: gconfig.Jira[jiraIndex]}
+	} else {
+		_jira = jira.Jira{Config: gconfig.Jira[0]}
+	}
 	togglUsername, _ := _toggl.GetUser()
 	const padding = 3
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, padding, ' ', tabwriter.StripEscape)
 	fmt.Fprintf(writer,
 		"\t%v:\t%v\t\n",
-		gconfig.Jira[0].Domain,
-		gconfig.Jira[0].Username,
+		helpers.GetFormattedDomain("toggl.com"),
+		*togglUsername,
 	)
 	fmt.Fprintf(writer,
-		"\ttoggl.com:\t%v\t\n",
-		*togglUsername,
+		"\t%v:\t%v\t\n",
+		helpers.GetFormattedDomain(_jira.Config.Domain),
+		_jira.Config.Username,
 	)
 	writer.Flush()
 	fmt.Println()
@@ -101,14 +107,14 @@ func CommandList() {
 		"\t%v\t%v\t%v\t%v\t\n",
 		"Issue key",
 		"Issue summary",
-		"Uncommited time",
+		"Time",
 		"Tracking status",
 	)
 	fmt.Fprintf(writer,
 		"\t%v\t%v\t%v\t%v\t\n",
 		"--------",
 		"-------------",
-		"---------------",
+		"----",
 		"---------------",
 	)
 	displayIssues := make(map[string]DisplayIssue)
@@ -123,7 +129,7 @@ func CommandList() {
 	totalUncommitedTime := 0
 	var notAssignedKeys []string
 	for _, _timeEntry := range _toggl.GetTimeEntries() {
-		if !_timeEntry.IsUncommitedEntry() {
+		if !_timeEntry.IsUncommitedEntry() || !_timeEntry.IsJiraDomainEntry(_jira.Config.Domain) {
 			continue
 		}
 		uncommitedTime := _timeEntry.GetDuration()
@@ -184,7 +190,13 @@ func CommandList() {
 
 func CommandStart() {
 	gconfig := (config.GlobalConfig{}).LoadConfig(true)
-	_jira := jira.Jira{Config: gconfig.Jira[0]}
+	var _jira jira.Jira
+	if len(gconfig.Jira) > 1 {
+		jiraIndex := gconfig.SelectJiraInstance()
+		_jira = jira.Jira{Config: gconfig.Jira[jiraIndex]}
+	} else {
+		_jira = jira.Jira{Config: gconfig.Jira[0]}
+	}
 	_toggl := toggl.Toggl{Config: gconfig.Toggl}
 	var issue jira.JiraIssue
 	if len(os.Args) < 3 {
@@ -192,7 +204,7 @@ func CommandStart() {
 	} else {
 		issue = _jira.GetIssueByKey(os.Args[2])
 	}
-	_toggl.StartIssueTracking(issue.ProjectKey, issue.Key)
+	_toggl.StartIssueTracking(issue.ProjectKey, issue.Key, _jira.Config.Domain)
 }
 
 func CommandStop() {
@@ -203,12 +215,18 @@ func CommandStop() {
 
 func CommandCommit() {
 	gconfig := (config.GlobalConfig{}).LoadConfig(true)
-	_jira := jira.Jira{Config: gconfig.Jira[0]}
+	var _jira jira.Jira
+	if len(gconfig.Jira) > 1 {
+		jiraIndex := gconfig.SelectJiraInstance()
+		_jira = jira.Jira{Config: gconfig.Jira[jiraIndex]}
+	} else {
+		_jira = jira.Jira{Config: gconfig.Jira[0]}
+	}
 	_toggl := toggl.Toggl{Config: gconfig.Toggl}
 	timeEntries := _toggl.GetTimeEntries()
 	var uncommitedTimeEntries []toggl.TogglTimeEntry
 	for _, _timeEntry := range timeEntries {
-		if _timeEntry.IsUncommitedEntry() {
+		if _timeEntry.IsUncommitedEntry() && _timeEntry.IsJiraDomainEntry(_jira.Config.Domain) {
 			uncommitedTimeEntries = append(uncommitedTimeEntries, _timeEntry)
 		}
 	}

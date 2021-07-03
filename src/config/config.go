@@ -118,3 +118,19 @@ func (config GlobalConfig) ChangeConfiguration() int {
 	}
 	return user_input
 }
+
+func (config GlobalConfig) SelectJiraInstance() int {
+	var jiraDomains []string
+	for _, jira := range config.Jira {
+		jiraDomains = append(jiraDomains, helpers.GetFormattedDomain(jira.Domain))
+	}
+	user_input, err := helpers.GetVariant(
+		"Select Jira instance",
+		jiraDomains,
+		"{{ . }} ",
+	)
+	if err != nil {
+		os.Exit(1)
+	}
+	return user_input
+}
