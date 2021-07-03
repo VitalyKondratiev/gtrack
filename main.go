@@ -103,20 +103,6 @@ func CommandList() {
 	)
 	writer.Flush()
 	fmt.Println()
-	fmt.Fprintf(writer,
-		"\t%v\t%v\t%v\t%v\t\n",
-		"Issue key",
-		"Issue summary",
-		"Time",
-		"Tracking status",
-	)
-	fmt.Fprintf(writer,
-		"\t%v\t%v\t%v\t%v\t\n",
-		"--------",
-		"-------------",
-		"----",
-		"---------------",
-	)
 	displayIssues := make(map[string]DisplayIssue)
 	for _, issue := range _jira.GetAssignedIssues() {
 		displayIssues[issue.Key] = DisplayIssue{
@@ -164,27 +150,48 @@ func CommandList() {
 			displayIssues[unassignedIssue.Key] = displayIssue
 		}
 	}
-	keys := make([]string, 0, len(displayIssues))
-	for key := range displayIssues {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		displayIssue := displayIssues[key]
+	if len(displayIssues) > 0 {
+		keys := make([]string, 0, len(displayIssues))
+		for key := range displayIssues {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
 		fmt.Fprintf(writer,
-			"\t%v\t%.30v...\t%v\t%v\t\n",
-			displayIssue.Key,
-			displayIssue.Summary,
-			helpers.FormatTimeFromUnix(displayIssue.UncommitedTime),
-			displayIssue.TrackingStatus,
+			"\t%v\t%v\t%v\t%v\t\n",
+			"Issue key",
+			"Issue summary",
+			"Time",
+			"Tracking status",
+		)
+		fmt.Fprintf(writer,
+			"\t%v\t%v\t%v\t%v\t\n",
+			"--------",
+			"-------------",
+			"----",
+			"---------------",
+		)
+		for _, key := range keys {
+			displayIssue := displayIssues[key]
+			fmt.Fprintf(writer,
+				"\t%v\t%.30v...\t%v\t%v\t\n",
+				displayIssue.Key,
+				displayIssue.Summary,
+				helpers.FormatTimeFromUnix(displayIssue.UncommitedTime),
+				displayIssue.TrackingStatus,
+			)
+		}
+		writer.Flush()
+		fmt.Println()
+		fmt.Fprintf(writer,
+			"\tUncommited time:\t%v\t\n",
+			helpers.FormatTimeFromUnix(totalUncommitedTime),
+		)
+	} else {
+		fmt.Fprintf(writer,
+			"\tYou don't have assigned or uncommited task\n",
 		)
 	}
-	writer.Flush()
-	fmt.Println()
-	fmt.Fprintf(writer,
-		"\tUncommited time:\t%v\t\n",
-		helpers.FormatTimeFromUnix(totalUncommitedTime),
-	)
 	writer.Flush()
 }
 

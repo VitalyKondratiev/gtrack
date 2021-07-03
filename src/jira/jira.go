@@ -57,7 +57,7 @@ func (jira Jira) SelectIssue() JiraIssue {
 func (jira Jira) GetIssueByKey(issueKey string) JiraIssue {
 	issues := jira.GetIssuesByField([]string{issueKey}, "key")
 	if len(issues) == 0 {
-		fmt.Printf("Issue not found in %v\n", helpers.GetFormattedDomain(jira.Config.Domain))
+		fmt.Printf("Issue '%v' not found in %v\n", issueKey, helpers.GetFormattedDomain(jira.Config.Domain))
 		os.Exit(1)
 	}
 	return issues[0]
