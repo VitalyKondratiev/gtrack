@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/user"
-	"path/filepath"
 
 	"../helpers"
 
 	"github.com/Jeffail/gabs"
+	"github.com/kirsle/configdir"
 )
 
-const userConfigPath = "/.config/gtrack"
 const userConfigName = "gtrack.json"
 
 type JiraConfig struct {
@@ -42,9 +40,7 @@ func (config GlobalConfig) SetConfig(jiraConfig JiraConfig, togglConfig TogglCon
 
 // SaveMainConfig : save main application configuration
 func (config GlobalConfig) SaveConfig() {
-	usr, _ := user.Current()
-	dir := usr.HomeDir
-	configPath := filepath.Join(dir, userConfigPath)
+	configPath := configdir.LocalConfig("gtrack")
 	_, err := os.Open(configPath + "/" + userConfigName)
 	if err != nil {
 		os.MkdirAll(configPath, os.ModePerm)
@@ -55,9 +51,7 @@ func (config GlobalConfig) SaveConfig() {
 
 // LoadMainConfig : get main application configuration
 func (config GlobalConfig) LoadConfig(needAuthorized bool) GlobalConfig {
-	usr, _ := user.Current()
-	dir := usr.HomeDir
-	configPath := filepath.Join(dir, userConfigPath)
+	configPath := configdir.LocalConfig("gtrack")
 	configFile, err := ioutil.ReadFile(configPath + "/" + userConfigName)
 	if err != nil {
 		if needAuthorized {
@@ -75,9 +69,7 @@ func (config GlobalConfig) LoadConfig(needAuthorized bool) GlobalConfig {
 }
 
 func RemoveConfig() {
-	usr, _ := user.Current()
-	dir := usr.HomeDir
-	configPath := filepath.Join(dir, userConfigPath)
+	configPath := configdir.LocalConfig("gtrack")
 	err := os.Remove(configPath + "/" + userConfigName)
 	if err != nil {
 		fmt.Println("Can't remove configuration file")
