@@ -23,9 +23,17 @@ func GetVariant(prompt string, variants interface{}, template string) (int, erro
 	return user_input, err
 }
 
-func GetString(prompt string) (string, error) {
-	s_prompt := promptui.Prompt{
-		Label: prompt,
+func GetString(prompt string, secure bool) (string, error) {
+	var s_prompt promptui.Prompt
+	if secure {
+		s_prompt = promptui.Prompt{
+			Label: prompt,
+			Mask:  '*',
+		}
+	} else {
+		s_prompt = promptui.Prompt{
+			Label: prompt,
+		}
 	}
 	return s_prompt.Run()
 }

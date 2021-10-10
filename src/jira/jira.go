@@ -14,19 +14,19 @@ func (jira Jira) IsLoggedIn() bool {
 
 func (jira Jira) SetConfig() Jira {
 	jira.isLoggedIn = false
-	result, err := helpers.GetString("Enter domain of your Jira instance")
+	result, err := helpers.GetString("Enter domain of your Jira instance", false)
 	if err != nil {
 		return jira
 	}
 	jira.Config.Domain = result
 
-	result, err = helpers.GetString("Enter your username")
+	result, err = helpers.GetString("Enter your username", false)
 	if err != nil {
 		return jira
 	}
 	jira.Config.Username = result
 
-	result, err = helpers.GetString("Enter your password")
+	result, err = helpers.GetString("Enter your password", true)
 	if err != nil {
 		return jira
 	}

@@ -47,7 +47,7 @@ func (toggl Toggl) IsLoggedIn() bool {
 }
 
 func (toggl Toggl) SetConfig() Toggl {
-	result, err := helpers.GetString("Enter API key of your Toggl.com account")
+	result, err := helpers.GetString("Enter API key of your Toggl.com account", false)
 	if err != nil {
 		toggl.isLoggedIn = false
 		return toggl
