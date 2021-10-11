@@ -27,6 +27,7 @@ func (jira Jira) authenticate() Jira {
 	responseBody := bytes.NewBuffer(postBody)
 	resp, err := http.Post(helpers.GetFormattedDomain(jira.Config.Domain)+"/rest/auth/1/session", "application/json", responseBody)
 	if err != nil {
+		fmt.Println(err)
 		return jira
 	}
 	defer resp.Body.Close()
@@ -42,6 +43,8 @@ func (jira Jira) authenticate() Jira {
 		jira.cookieValue = sessionValue
 		jira.isLoggedIn = true
 		return jira
+	} else {
+		fmt.Println("HTTP status code is: " + strconv.Itoa(resp.StatusCode))
 	}
 	return jira
 }
