@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -12,6 +13,11 @@ import (
 )
 
 const apiPath = "https://api.track.toggl.com/api/v8/"
+
+func (toggl Toggl) getIssueKey(description string) string {
+	keyRegex := regexp.MustCompile(`(?m)\w*-\d*`)
+	return keyRegex.FindString(description)
+}
 
 func (toggl Toggl) apiGetData(apiMethod string) ([]byte, int) {
 	client := http.Client{}
@@ -153,7 +159,7 @@ func (toggl Toggl) GetTimeEntries() []TogglTimeEntry {
 			}
 			timeEntry := TogglTimeEntry{
 				Id:          int(_timeEntry["id"].(float64)),
-				Description: description,
+				Description: toggl.getIssueKey(description),
 				Tags:        tags,
 				duration:    int(_timeEntry["duration"].(float64)),
 				Start:       _timeEntry["start"].(string),
@@ -190,7 +196,7 @@ func (toggl Toggl) GetRunningTimeEntry() TogglTimeEntry {
 			}
 			timeEntry = TogglTimeEntry{
 				Id:          int(_timeEntry["id"].(float64)),
-				Description: description,
+				Description: toggl.getIssueKey(description),
 				Tags:        tags,
 				duration:    int(_timeEntry["duration"].(float64)),
 				Start:       _timeEntry["start"].(string),

@@ -102,7 +102,7 @@ func (toggl Toggl) renewTagOnWorkspace(tagJiraDomain string) {
 	}
 }
 
-func (toggl Toggl) StartIssueTracking(projectKey string, taskName string, jiraDomain string) {
+func (toggl Toggl) StartIssueTracking(projectKey string, taskName string, taskSummary string, jiraDomain string) {
 	toggl.renewTagOnWorkspace(jiraDomain)
 	var project TogglProject
 	for _, _project := range toggl.GetProjects() {
@@ -113,9 +113,9 @@ func (toggl Toggl) StartIssueTracking(projectKey string, taskName string, jiraDo
 	if project.Id == 0 {
 		project = toggl.CreateProject(projectKey)
 	}
-	timeEntry := toggl.StartTimeEntry(project.Id, taskName, jiraDomain)
+	timeEntry := toggl.StartTimeEntry(project.Id, fmt.Sprintf("%s %s", taskName, taskSummary), jiraDomain)
 	if timeEntry.Id != 0 {
-		fmt.Printf("Time tracking for %s started!\n", timeEntry.Description)
+		fmt.Printf("Time tracking for %s started!\n", taskName)
 		return
 	}
 	fmt.Println("You shouldn't have seen this text!")

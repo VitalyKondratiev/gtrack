@@ -211,7 +211,7 @@ func CommandStart() {
 	} else {
 		issue = _jira.GetIssueByKey(os.Args[2])
 	}
-	_toggl.StartIssueTracking(issue.ProjectKey, issue.Key, _jira.Config.Domain)
+	_toggl.StartIssueTracking(issue.ProjectKey, issue.Key, issue.Summary, _jira.Config.Domain)
 }
 
 func CommandStop() {
