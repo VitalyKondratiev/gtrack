@@ -85,7 +85,7 @@ func CommandList() {
 	_toggl := toggl.Toggl{Config: gconfig.Toggl}
 	togglUsername, _ := _toggl.GetUser()
 	const padding = 3
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, padding, ' ', tabwriter.StripEscape)
+	writer := tabwriter.NewWriter(color.Output, 0, 0, padding, ' ', tabwriter.StripEscape)
 	blue := color.New(color.FgHiBlue).SprintFunc()
 	cyan := color.New(color.FgHiCyan).SprintFunc()
 	yellow := color.New(color.FgHiYellow).SprintFunc()
