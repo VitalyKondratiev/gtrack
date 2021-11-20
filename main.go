@@ -236,7 +236,7 @@ func CommandStart() {
 			if err != nil {
 				os.Exit(1)
 			}
-			issueKey = strings.Trim(h.Name().String(), "refs/heads/")
+			issueKey = strings.Replace(h.Name().String(), "refs/heads/", "", -1)
 		} else {
 			issueKey = os.Args[2]
 		}
