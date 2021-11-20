@@ -224,8 +224,10 @@ func CommandStart() {
 	} else {
 		var issueKey string
 		if os.Args[2] == "-g" {
-			dir, err := os.Getwd()
-			if err != nil {
+			dir, _ := os.Getwd()
+			dir, isGitRoot := helpers.TryGetGitDirectory(dir)
+			if !isGitRoot {
+				fmt.Println("Can't find .git folder in this path directories")
 				os.Exit(1)
 			}
 			repo, err := git.PlainOpen(dir)
