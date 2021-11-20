@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"./src/toggl"
 
 	"github.com/fatih/color"
+	"gopkg.in/src-d/go-git.v4"
 )
 
 type DisplayIssue struct {
@@ -209,18 +211,64 @@ func CommandList() {
 func CommandStart() {
 	gconfig := (config.GlobalConfig{}).LoadConfig(true)
 	var _jira jira.Jira
-	if len(gconfig.Jira) > 1 {
-		jiraIndex := gconfig.SelectJiraInstance()
-		_jira = jira.Jira{Config: gconfig.Jira[jiraIndex]}
-	} else {
-		_jira = jira.Jira{Config: gconfig.Jira[0]}
-	}
 	_toggl := toggl.Toggl{Config: gconfig.Toggl}
 	var issue jira.JiraIssue
 	if len(os.Args) < 3 {
+		if len(gconfig.Jira) > 1 {
+			jiraIndex := gconfig.SelectJiraInstance([]int{})
+			_jira = jira.Jira{Config: gconfig.Jira[jiraIndex]}
+		} else {
+			_jira = jira.Jira{Config: gconfig.Jira[0]}
+		}
 		issue = _jira.SelectIssue()
 	} else {
-		issue = _jira.GetIssueByKey(os.Args[2])
+		var issueKey string
+		if os.Args[2] == "-g" {
+			dir, err := os.Getwd()
+			if err != nil {
+				os.Exit(1)
+			}
+			repo, err := git.PlainOpen(dir)
+			if err != nil {
+				os.Exit(1)
+			}
+			h, err := repo.Head()
+			if err != nil {
+				os.Exit(1)
+			}
+			issueKey = strings.Trim(h.Name().String(), "refs/heads/")
+		} else {
+			issueKey = os.Args[2]
+		}
+		var lastJira jira.Jira
+		var lastIssue jira.JiraIssue
+		issuesByInstances := make(map[int]jira.JiraIssue)
+		for jiraIndex, jiraConfig := range gconfig.Jira {
+			lastJira = jira.Jira{Config: jiraConfig}
+			lastIssue = lastJira.GetIssueByKey(issueKey)
+			if lastIssue.Id != 0 {
+				issuesByInstances[jiraIndex] = lastIssue
+			}
+		}
+		if len(issuesByInstances) == 0 {
+			fmt.Printf("Issue '%v' not found in available Jira instances\n", issueKey)
+			os.Exit(1)
+		} else {
+			var jiraIndexes []int
+			var issues []jira.JiraIssue
+			for jiraIndex, _issue := range issuesByInstances {
+				jiraIndexes = append(jiraIndexes, jiraIndex)
+				issues = append(issues, _issue)
+			}
+			var jiraIndex int
+			if len(issuesByInstances) > 1 {
+				jiraIndex = gconfig.SelectJiraInstance(jiraIndexes)
+			} else {
+				jiraIndex = jiraIndexes[0]
+			}
+			_jira = jira.Jira{Config: gconfig.Jira[jiraIndex]}
+			issue = issues[jiraIndex]
+		}
 	}
 	_toggl.StartIssueTracking(issue.ProjectKey, issue.Key, issue.Summary, _jira.Config.Domain)
 }
@@ -235,7 +283,7 @@ func CommandCommit() {
 	gconfig := (config.GlobalConfig{}).LoadConfig(true)
 	var _jira jira.Jira
 	if len(gconfig.Jira) > 1 {
-		jiraIndex := gconfig.SelectJiraInstance()
+		jiraIndex := gconfig.SelectJiraInstance([]int{})
 		_jira = jira.Jira{Config: gconfig.Jira[jiraIndex]}
 	} else {
 		_jira = jira.Jira{Config: gconfig.Jira[0]}

@@ -111,10 +111,22 @@ func (config GlobalConfig) ChangeConfiguration() int {
 	return user_input
 }
 
-func (config GlobalConfig) SelectJiraInstance() int {
+func (config GlobalConfig) SelectJiraInstance(indexes []int) int {
 	var jiraDomains []string
-	for _, jira := range config.Jira {
-		jiraDomains = append(jiraDomains, helpers.GetFormattedDomain(jira.Domain))
+	for jiraIndex, jiraConfig := range config.Jira {
+		if len(indexes) != 0 {
+			indexIsAllowed := false
+			for _, index := range indexes {
+				if index == jiraIndex {
+					indexIsAllowed = true
+					break
+				}
+			}
+			if !indexIsAllowed {
+				break
+			}
+		}
+		jiraDomains = append(jiraDomains, helpers.GetFormattedDomain(jiraConfig.Domain))
 	}
 	user_input, err := helpers.GetVariant(
 		"Select Jira instance",
