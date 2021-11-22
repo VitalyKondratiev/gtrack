@@ -265,11 +265,12 @@ func CommandStart() {
 			var jiraIndex int
 			if len(issuesByInstances) > 1 {
 				jiraIndex = gconfig.SelectJiraInstance(jiraIndexes)
+				issue = issues[jiraIndex]
 			} else {
 				jiraIndex = jiraIndexes[0]
+				issue = issues[0]
 			}
 			_jira = jira.Jira{Config: gconfig.Jira[jiraIndex]}
-			issue = issues[jiraIndex]
 		}
 	}
 	_toggl.StartIssueTracking(issue.ProjectKey, issue.Key, issue.Summary, _jira.Config.Domain)
