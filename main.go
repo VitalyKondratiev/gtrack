@@ -3,12 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
 
 	"./src/config"
+	"./src/github"
 	"./src/helpers"
 	"./src/jira"
 	"./src/toggl"
@@ -41,6 +43,8 @@ func main() {
 		CommandStop()
 	case "commit":
 		CommandCommit()
+	case "update":
+		CommandUpdate()
 	case "help":
 		CommandHelp()
 	default:
@@ -331,6 +335,29 @@ func CommandCommit() {
 		} else {
 			fmt.Printf("Successfully commited %v issues!\n", uncommitedCount)
 		}
+	}
+}
+
+// CommandHelp : try update executable
+func CommandUpdate() {
+	executable, _ := os.Executable()
+	executablePath := filepath.Clean(executable)
+	executableStat, _ := os.Stat(executablePath)
+	executableModifiedAt := executableStat.ModTime().UTC()
+	githubRelease := github.Github{}.GetLastRelease()
+	difference := executableModifiedAt.Sub(githubRelease.PublishedAt).Seconds()
+	if difference < 0 {
+		variant, err := helpers.GetVariant(
+			fmt.Sprintf("Update available to %s (see in browser: %s)", githubRelease.Version, githubRelease.ReleasePage),
+			[]string{"Update now", "Cancel"},
+			"{{ . }} ",
+		)
+		if err != nil || variant == 1 {
+			os.Exit(1)
+		}
+		//TODO: Download update and replace executable
+	} else {
+		fmt.Println("No available updates")
 	}
 }
 
