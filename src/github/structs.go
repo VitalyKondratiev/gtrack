@@ -6,9 +6,9 @@ type Github struct {
 }
 
 type GithubFiles struct {
-	MacTGZ        string
-	WindowsBinary string
-	LinuxBunary   string
+	darwin  string
+	windows string
+	linux   string
 }
 
 type GithubRelease struct {

@@ -346,7 +346,7 @@ func CommandUpdate() {
 	executableModifiedAt := executableStat.ModTime().UTC()
 	githubRelease := github.Github{}.GetLastRelease()
 	difference := executableModifiedAt.Sub(githubRelease.PublishedAt).Seconds()
-	if difference < 0 {
+	if difference > 0 {
 		variant, err := helpers.GetVariant(
 			fmt.Sprintf("Update available to %s (see in browser: %s)", githubRelease.Version, githubRelease.ReleasePage),
 			[]string{"Update now", "Cancel"},
@@ -355,7 +355,10 @@ func CommandUpdate() {
 		if err != nil || variant == 1 {
 			os.Exit(1)
 		}
-		//TODO: Download update and replace executable
+		github.Github{}.DownloadRelease(githubRelease.DownloadableFiles)
+		if (github.Github{}.ReplaceCurrent()) {
+			fmt.Printf("Succesfully updated to %s\n", githubRelease.Version)
+		}
 	} else {
 		fmt.Println("No available updates")
 	}
@@ -370,6 +373,7 @@ func CommandHelp() {
 	commands["start"] = "start timetracking for selected task"
 	commands["stop"] = "stop timetracking for selected task"
 	commands["commit"] = "send your worklog to Jira"
+	commands["update"] = "update binary to latest version"
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, padding, ' ', tabwriter.StripEscape)
 	fmt.Println("List of avalaible commands:")
 	for command, description := range commands {

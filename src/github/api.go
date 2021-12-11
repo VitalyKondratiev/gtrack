@@ -1,8 +1,14 @@
 package github
 
 import (
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
+	"reflect"
+	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/Jeffail/gabs"
@@ -34,11 +40,11 @@ func (github Github) GetLastRelease() GithubRelease {
 			contentType := _child["content_type"].(string)
 			downloadableFile := _child["browser_download_url"].(string)
 			if contentType == "application/octet-stream" {
-				platformFiles.LinuxBunary = downloadableFile
+				platformFiles.linux = downloadableFile
 			} else if contentType == "application/x-ms-dos-executable" {
-				platformFiles.WindowsBinary = downloadableFile
+				platformFiles.windows = downloadableFile
 			} else if contentType == "application/gzip" {
-				platformFiles.MacTGZ = downloadableFile
+				platformFiles.darwin = downloadableFile
 			}
 		}
 		publishedAt, _ := time.Parse("2006-01-02T15:04:05Z", jsonParsed.Path("published_at").Data().(string))
@@ -48,4 +54,46 @@ func (github Github) GetLastRelease() GithubRelease {
 		release.ReleasePage = jsonParsed.Path("html_url").Data().(string)
 	}
 	return release
+}
+
+func (github Github) DownloadRelease(files GithubFiles) bool {
+	executable, _ := os.Executable()
+	executablePath := filepath.Clean(executable)
+	out, err := os.Create(executablePath + "_latest")
+	if err != nil {
+		panic(err)
+	}
+	defer out.Close()
+	r := reflect.ValueOf(files)
+	url := reflect.Indirect(r).FieldByName(runtime.GOOS)
+	resp, err := http.Get(url.String())
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	return true
+}
+
+func (github Github) ReplaceCurrent() bool {
+	executable, _ := os.Executable()
+	executablePath := filepath.Clean(executable)
+	bytes, err := ioutil.ReadFile(executablePath + "_latest")
+	if err != nil {
+		panic(err)
+	}
+	syscall.Unlink(executablePath)
+	fd_current, err := syscall.Open(executablePath, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_APPEND, 0)
+	if err != nil {
+		panic(err)
+	}
+	_, err = syscall.Write(fd_current, bytes)
+	if err != nil {
+		panic(err)
+	}
+	syscall.Unlink(executablePath + "_latest")
+	return true
 }
