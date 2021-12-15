@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"../helpers"
 	"github.com/Jeffail/gabs"
+	"github.com/VitalyKondratiev/gtrack/src/helpers"
 )
 
 func (jira Jira) getApiPath() string {
@@ -94,7 +94,8 @@ func (jira Jira) GetAssignedIssues() []JiraIssue {
 		if err != nil {
 			panic(err)
 		}
-		for _, child := range jsonParsed.S("issues").Children() {
+		children, _ := jsonParsed.S("issues").Children()
+		for _, child := range children {
 			_issue := child.Data().(map[string]interface{})
 			id, _ := strconv.Atoi(_issue["id"].(string))
 			issue := JiraIssue{
@@ -121,7 +122,8 @@ func (jira Jira) GetIssuesByField(values []string, field string) []JiraIssue {
 		if err != nil {
 			panic(err)
 		}
-		for _, child := range jsonParsed.S("issues").Children() {
+		children, _ := jsonParsed.S("issues").Children()
+		for _, child := range children {
 			_issue := child.Data().(map[string]interface{})
 			id, _ := strconv.Atoi(_issue["id"].(string))
 			issue := JiraIssue{

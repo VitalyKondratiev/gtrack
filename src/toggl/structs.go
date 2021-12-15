@@ -1,7 +1,7 @@
 package toggl
 
 import (
-	"../config"
+	"github.com/VitalyKondratiev/gtrack/src/config"
 )
 
 type Toggl struct {

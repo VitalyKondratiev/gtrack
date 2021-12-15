@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"../helpers"
+	"github.com/VitalyKondratiev/gtrack/src/helpers"
 )
 
 const tagUncommitedName = "gtrack_uncommited"
