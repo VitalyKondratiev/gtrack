@@ -1,6 +1,7 @@
 package github
 
 import (
+	"bytes"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -8,10 +9,10 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"syscall"
 	"time"
 
 	"github.com/Jeffail/gabs"
+	"github.com/inconshreveable/go-update"
 )
 
 const releasesUri = "https://api.github.com/repos/vitalykondratiev/gtrack/releases/latest"
@@ -56,44 +57,36 @@ func (github Github) GetLastRelease() GithubRelease {
 	return release
 }
 
-func (github Github) DownloadRelease(files GithubFiles) bool {
+func (github Github) DownloadRelease(files GithubFiles) (bool, error) {
+	result := false
 	executable, _ := os.Executable()
 	executablePath := filepath.Clean(executable)
 	out, err := os.Create(executablePath + "_latest")
 	if err != nil {
-		panic(err)
+		return result, err
 	}
 	defer out.Close()
 	r := reflect.ValueOf(files)
 	url := reflect.Indirect(r).FieldByName(runtime.GOOS)
 	resp, err := http.Get(url.String())
 	if err != nil {
-		panic(err)
+		return result, err
 	}
 	defer resp.Body.Close()
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		panic(err)
+		return result, err
 	}
-	return true
+	return true, err
 }
 
-func (github Github) ReplaceCurrent() bool {
+func (github Github) Update() bool {
 	executable, _ := os.Executable()
 	executablePath := filepath.Clean(executable)
-	bytes, err := ioutil.ReadFile(executablePath + "_latest")
+	_bytes, err := ioutil.ReadFile(executablePath + "_latest")
+	err = update.Apply(bytes.NewReader(_bytes), update.Options{})
 	if err != nil {
 		panic(err)
 	}
-	syscall.Unlink(executablePath)
-	fd_current, err := syscall.Open(executablePath, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_APPEND, 0)
-	if err != nil {
-		panic(err)
-	}
-	_, err = syscall.Write(fd_current, bytes)
-	if err != nil {
-		panic(err)
-	}
-	syscall.Unlink(executablePath + "_latest")
 	return true
 }

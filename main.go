@@ -355,9 +355,15 @@ func CommandUpdate() {
 		if err != nil || variant == 1 {
 			os.Exit(1)
 		}
-		github.Github{}.DownloadRelease(githubRelease.DownloadableFiles)
-		if (github.Github{}.ReplaceCurrent()) {
+		isFileDownloaded, err := github.Github{}.DownloadRelease(githubRelease.DownloadableFiles)
+		if err != nil || !isFileDownloaded {
+			fmt.Printf("Download release error :(")
+		}
+		isUpdated := github.Github{}.Update()
+		if isUpdated {
 			fmt.Printf("Succesfully updated to %s\n", githubRelease.Version)
+		} else {
+			panic(err)
 		}
 	} else {
 		fmt.Println("No available updates")
