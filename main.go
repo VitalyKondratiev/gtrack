@@ -346,7 +346,7 @@ func CommandUpdate() {
 	executableModifiedAt := executableStat.ModTime().UTC()
 	githubRelease := github.Github{}.GetLastRelease()
 	difference := executableModifiedAt.Sub(githubRelease.PublishedAt).Seconds()
-	if difference > 0 {
+	if difference < 0 {
 		variant, err := helpers.GetVariant(
 			fmt.Sprintf("Update available to %s (see in browser: %s)", githubRelease.Version, githubRelease.ReleasePage),
 			[]string{"Update now", "Cancel"},

@@ -1,7 +1,9 @@
 package github
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -83,10 +85,27 @@ func (github Github) DownloadRelease(files GithubFiles) (bool, error) {
 func (github Github) Update() bool {
 	executable, _ := os.Executable()
 	executablePath := filepath.Clean(executable)
-	_bytes, err := ioutil.ReadFile(executablePath + "_latest")
+	var _bytes []byte
+	var err error
+	if runtime.GOOS != "darwin" {
+		_bytes, err = ioutil.ReadFile(executablePath + "_latest")
+	} else {
+		tarFile, err := os.Open(executablePath + "_latest")
+		if err != nil {
+			panic(err)
+		}
+		uncompressedStream, err := gzip.NewReader(tarFile)
+		tarReader := tar.NewReader(uncompressedStream)
+		tarHeader, err := tarReader.Next()
+		if err != io.EOF && tarHeader.Typeflag == tar.TypeReg {
+			_bytes, err = io.ReadAll(tarReader)
+		}
+	}
 	err = update.Apply(bytes.NewReader(_bytes), update.Options{})
 	if err != nil {
 		panic(err)
+	} else {
+		os.Remove(executablePath + "_latest")
 	}
 	return true
 }
