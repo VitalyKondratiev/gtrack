@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path/filepath"
 	"reflect"
 	"runtime"
 	"time"
@@ -62,9 +61,8 @@ func (github Github) GetLastRelease() GithubRelease {
 
 func (github Github) DownloadRelease(files GithubFiles) (bool, error) {
 	result := false
-	executable, _ := os.Executable()
-	executablePath := filepath.Clean(executable)
-	out, err := os.Create(executablePath + "_latest")
+	updateFile := os.TempDir() + "/gtrack_update_file"
+	out, err := os.Create(updateFile)
 	if err != nil {
 		return result, err
 	}
@@ -84,15 +82,14 @@ func (github Github) DownloadRelease(files GithubFiles) (bool, error) {
 }
 
 func (github Github) Update() bool {
-	executable, _ := os.Executable()
-	executablePath := filepath.Clean(executable)
+	updateFile := os.TempDir() + "/gtrack_update_file"
 	var _bytes []byte
 	var err error
 	if runtime.GOOS != "darwin" {
-		_bytes, err = ioutil.ReadFile(executablePath + "_latest")
+		_bytes, err = ioutil.ReadFile(updateFile)
 	} else {
 		fmt.Printf("Archive unpacking...\n")
-		tarFile, err := os.Open(executablePath + "_latest")
+		tarFile, err := os.Open(updateFile)
 		if err != nil {
 			panic(err)
 		}
@@ -107,7 +104,7 @@ func (github Github) Update() bool {
 	if err != nil {
 		panic(err)
 	} else {
-		os.Remove(executablePath + "_latest")
+		os.Remove(updateFile)
 	}
 	return true
 }
