@@ -79,7 +79,8 @@ func (toggl Toggl) GetWorkspaces() []TogglWorkspace {
 		if err != nil {
 			panic(err)
 		}
-		for _, child := range jsonParsed.Children() {
+		children, _ := jsonParsed.Children()
+		for _, child := range children {
 			_workspace := child.Data().(map[string]interface{})
 			if _workspace["admin"].(bool) {
 				workspace := TogglWorkspace{
@@ -101,7 +102,8 @@ func (toggl Toggl) GetProjects() []TogglProject {
 		if err != nil {
 			panic(err)
 		}
-		for _, child := range jsonParsed.Children() {
+		children, _ := jsonParsed.Children()
+		for _, child := range children {
 			_project := child.Data().(map[string]interface{})
 			project := TogglProject{
 				Id:   int(_project["id"].(float64)),
@@ -121,7 +123,8 @@ func (toggl Toggl) GetWorkspaceTags() []TogglWorkspaceTag {
 		if err != nil {
 			panic(err)
 		}
-		for _, child := range jsonParsed.Children() {
+		children, _ := jsonParsed.Children()
+		for _, child := range children {
 			_workspaceTag := child.Data().(map[string]interface{})
 			workspaceTag := TogglWorkspaceTag{
 				Id:   int(_workspaceTag["id"].(float64)),
@@ -141,7 +144,8 @@ func (toggl Toggl) GetTimeEntries() []TogglTimeEntry {
 		if err != nil {
 			panic(err)
 		}
-		for _, child := range jsonParsed.Children() {
+		children, _ := jsonParsed.Children()
+		for _, child := range children {
 			_timeEntry := child.Data().(map[string]interface{})
 			var tags []string
 			var description string
@@ -179,8 +183,9 @@ func (toggl Toggl) GetRunningTimeEntry() TogglTimeEntry {
 		if err != nil {
 			panic(err)
 		}
-		for _, child := range jsonParsed.Children() {
-			if child.String() == "null" {
+		children, _ := jsonParsed.Children()
+		for _, child := range children {
+			if child.String() == "null" || child.String() == "{}" {
 				return timeEntry
 			}
 			_timeEntry := child.Data().(map[string]interface{})

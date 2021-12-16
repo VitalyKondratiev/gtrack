@@ -1,7 +1,7 @@
 package jira
 
 import (
-	"../config"
+	"github.com/VitalyKondratiev/gtrack/src/config"
 )
 
 type Jira struct {

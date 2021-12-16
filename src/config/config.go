@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"../helpers"
+	"github.com/VitalyKondratiev/gtrack/src/helpers"
 
 	"github.com/Jeffail/gabs"
 	"github.com/kirsle/configdir"

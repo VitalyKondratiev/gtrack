@@ -9,11 +9,11 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"./src/config"
-	"./src/github"
-	"./src/helpers"
-	"./src/jira"
-	"./src/toggl"
+	"github.com/VitalyKondratiev/gtrack/src/config"
+	"github.com/VitalyKondratiev/gtrack/src/github"
+	"github.com/VitalyKondratiev/gtrack/src/helpers"
+	"github.com/VitalyKondratiev/gtrack/src/jira"
+	"github.com/VitalyKondratiev/gtrack/src/toggl"
 
 	"github.com/fatih/color"
 	"gopkg.in/src-d/go-git.v4"

@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"../helpers"
+	"github.com/VitalyKondratiev/gtrack/src/helpers"
 )
 
 func (jira Jira) IsLoggedIn() bool {
