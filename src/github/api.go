@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -90,6 +91,7 @@ func (github Github) Update() bool {
 	if runtime.GOOS != "darwin" {
 		_bytes, err = ioutil.ReadFile(executablePath + "_latest")
 	} else {
+		fmt.Printf("Archive unpacking...\n")
 		tarFile, err := os.Open(executablePath + "_latest")
 		if err != nil {
 			panic(err)
