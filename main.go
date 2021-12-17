@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -96,6 +95,15 @@ func CommandList() {
 	cyan := color.New(color.FgHiCyan).SprintFunc()
 	yellow := color.New(color.FgHiYellow).SprintFunc()
 	bold := color.New(color.Bold).SprintFunc()
+	red := color.New(color.FgHiRed).SprintFunc()
+	if duration, _ := time.ParseDuration("6h"); gconfig.UpdateNotify.Add(duration).Sub(time.Now()) < 0 {
+		hasUpdate, githubRelease := github.Github{}.HasUpdate()
+		if !hasUpdate {
+			fmt.Fprintf(writer, "\t%v\n\n", red("Update to ", githubRelease.Version, " available, run 'gtrack update' for new version "))
+			gconfig.UpdateNotify = time.Now()
+			gconfig.SaveConfig()
+		}
+	}
 	fmt.Fprintf(writer,
 		"\t%v:\t%v\t\n",
 		blue(helpers.GetFormattedDomain("toggl.com")),
@@ -340,13 +348,9 @@ func CommandCommit() {
 
 // CommandHelp : try update executable
 func CommandUpdate() {
-	executable, _ := os.Executable()
-	executablePath := filepath.Clean(executable)
-	executableStat, _ := os.Stat(executablePath)
-	executableModifiedAt := executableStat.ModTime().UTC()
-	githubRelease := github.Github{}.GetLastRelease()
-	difference := executableModifiedAt.Sub(githubRelease.PublishedAt).Seconds()
-	if difference < 0 {
+	github := github.Github{}
+	hasUpdate, githubRelease := github.HasUpdate()
+	if hasUpdate {
 		variant, err := helpers.GetVariant(
 			fmt.Sprintf("Update available to %s (see in browser: %s)", githubRelease.Version, githubRelease.ReleasePage),
 			[]string{"Update now", "Cancel"},
@@ -356,11 +360,11 @@ func CommandUpdate() {
 			os.Exit(1)
 		}
 		fmt.Printf("Downloading release %s...\n", githubRelease.Version)
-		isFileDownloaded, err := github.Github{}.DownloadRelease(githubRelease.DownloadableFiles)
+		isFileDownloaded, err := github.DownloadRelease(githubRelease.DownloadableFiles)
 		if err != nil || !isFileDownloaded {
 			fmt.Printf("Download release error :(")
 		}
-		isUpdated := github.Github{}.Update()
+		isUpdated := github.Update()
 		fmt.Printf("Replacing binary file...\n")
 		if isUpdated {
 			fmt.Printf("Succesfully updated to %s\n", githubRelease.Version)

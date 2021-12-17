@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"time"
@@ -18,6 +19,16 @@ import (
 )
 
 const releasesUri = "https://api.github.com/repos/vitalykondratiev/gtrack/releases/latest"
+
+func (github Github) HasUpdate() (bool, GithubRelease) {
+	executable, _ := os.Executable()
+	executablePath := filepath.Clean(executable)
+	executableStat, _ := os.Stat(executablePath)
+	executableModifiedAt := executableStat.ModTime().UTC()
+	githubLastRelease := github.GetLastRelease()
+	difference := executableModifiedAt.Sub(githubLastRelease.PublishedAt).Seconds()
+	return difference < 0, githubLastRelease
+}
 
 func (github Github) GetLastRelease() GithubRelease {
 	client := http.Client{}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/VitalyKondratiev/gtrack/src/helpers"
 
@@ -29,6 +30,7 @@ type GlobalConfig struct {
 	ConfigVersion int          `json:"config_version"`
 	Jira          []JiraConfig `json:"jira"`
 	Toggl         TogglConfig  `json:"toggl"`
+	UpdateNotify  time.Time    `json:"update_notify"`
 }
 
 func (config GlobalConfig) SetConfig(jiraConfig JiraConfig, togglConfig TogglConfig) GlobalConfig {
