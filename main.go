@@ -98,7 +98,7 @@ func CommandList() {
 	red := color.New(color.FgHiRed).SprintFunc()
 	if duration, _ := time.ParseDuration("6h"); gconfig.UpdateNotify.Add(duration).Sub(time.Now()) < 0 {
 		hasUpdate, githubRelease := github.Github{}.HasUpdate()
-		if !hasUpdate {
+		if hasUpdate {
 			fmt.Fprintf(writer, "\t%v\n\n", red("Update to ", githubRelease.Version, " available, run 'gtrack update' for new version "))
 			gconfig.UpdateNotify = time.Now()
 			gconfig.SaveConfig()
