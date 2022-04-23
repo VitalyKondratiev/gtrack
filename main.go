@@ -57,7 +57,6 @@ func CommandAuth() {
 		switch choice := gconfig.ChangeConfiguration(); choice {
 		case 0:
 			// Change existing Jira account
-			fmt.Println("Not realized yet...")
 			var jiraIndex int
 			if len(gconfig.Jira) > 1 {
 				jiraIndex = gconfig.SelectJiraInstance([]int{})
