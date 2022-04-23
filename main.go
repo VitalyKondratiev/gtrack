@@ -57,8 +57,54 @@ func CommandAuth() {
 		switch choice := gconfig.ChangeConfiguration(); choice {
 		case 0:
 			// Change existing Jira account
-			// TODO: Select Jira instance and replace it
 			fmt.Println("Not realized yet...")
+			var jiraIndex int
+			if len(gconfig.Jira) > 1 {
+				jiraIndex = gconfig.SelectJiraInstance([]int{})
+			} else {
+				jiraIndex = 0
+			}
+			optionIndex, err := helpers.GetVariant(
+				"Select value for changing",
+				[]string{
+					"Domain",
+					"Username",
+					"Password",
+				},
+				"{{ . }} ",
+			)
+			if err != nil {
+				helpers.LogFatal(err)
+			}
+			fmt.Println(optionIndex)
+			var prompt string
+			var secure bool
+			switch optionIndex {
+			case 0:
+				prompt = fmt.Sprintf("Enter domain of your Jira instance (%v)", gconfig.Jira[jiraIndex].Domain)
+				secure = false
+			case 1:
+				prompt = fmt.Sprintf("Enter your username (%v)", gconfig.Jira[jiraIndex].Username)
+				secure = false
+			case 2:
+				prompt = "Enter your password"
+				secure = true
+			}
+			optionValue, err := helpers.GetString(prompt, secure)
+			if err != nil {
+				helpers.LogFatal(err)
+			}
+			if len(optionValue) > 0 {
+				switch optionIndex {
+				case 0:
+					gconfig.Jira[jiraIndex].Domain = optionValue
+				case 1:
+					gconfig.Jira[jiraIndex].Username = optionValue
+				case 2:
+					gconfig.Jira[jiraIndex].Password = optionValue
+				}
+			}
+			gconfig.SaveConfig()
 		case 1:
 			// Add one more Jira account
 			_jira := (jira.Jira{}).SetConfig()
