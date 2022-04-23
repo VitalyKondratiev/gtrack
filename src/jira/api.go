@@ -35,7 +35,9 @@ func (jira Jira) authenticate() Jira {
 		data, _ := ioutil.ReadAll(resp.Body)
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\nurl: %v\n\nresponse:\n%v", err, resp.Request.URL, string(data)),
+			)
 		}
 		sessionName := jsonParsed.Path("session.name").Data().(string)
 		sessionValue := jsonParsed.Path("session.value").Data().(string)
@@ -54,13 +56,13 @@ func (jira Jira) apiGetData(apiMethod string) ([]byte, int) {
 	client := http.Client{}
 	req, err := http.NewRequest("GET", jira.getApiPath()+apiMethod, nil)
 	if err != nil {
-		panic(err)
+		helpers.LogFatal(err)
 	}
 	authCookie := &http.Cookie{Name: jira.cookieName, Value: jira.cookieValue, HttpOnly: true}
 	req.AddCookie(authCookie)
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		helpers.LogFatal(err)
 	}
 	defer resp.Body.Close()
 	data, _ := ioutil.ReadAll(resp.Body)
@@ -72,14 +74,14 @@ func (jira Jira) apiPostData(apiMethod string, payload []byte) ([]byte, int) {
 	client := http.Client{}
 	req, err := http.NewRequest("POST", jira.getApiPath()+apiMethod, requestBody)
 	if err != nil {
-		panic(err)
+		helpers.LogFatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	authCookie := &http.Cookie{Name: jira.cookieName, Value: jira.cookieValue, HttpOnly: true}
 	req.AddCookie(authCookie)
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		helpers.LogFatal(err)
 	}
 	defer resp.Body.Close()
 	data, _ := ioutil.ReadAll(resp.Body)
@@ -92,7 +94,9 @@ func (jira Jira) GetAssignedIssues() []JiraIssue {
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
+			)
 		}
 		children, _ := jsonParsed.S("issues").Children()
 		for _, child := range children {
@@ -120,7 +124,9 @@ func (jira Jira) GetIssuesByField(values []string, field string) []JiraIssue {
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
+			)
 		}
 		children, _ := jsonParsed.S("issues").Children()
 		for _, child := range children {

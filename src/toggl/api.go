@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/Jeffail/gabs"
+	"github.com/VitalyKondratiev/gtrack/src/helpers"
 )
 
 const apiPath = "https://api.track.toggl.com/api/v8/"
@@ -23,12 +25,12 @@ func (toggl Toggl) apiGetData(apiMethod string) ([]byte, int) {
 	client := http.Client{}
 	req, err := http.NewRequest("GET", apiPath+apiMethod, nil)
 	if err != nil {
-		panic(err)
+		helpers.LogFatal(err)
 	}
 	req.SetBasicAuth(toggl.Config.ApiKey, "api_token")
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		helpers.LogFatal(err)
 	}
 	defer resp.Body.Close()
 	data, _ := ioutil.ReadAll(resp.Body)
@@ -40,13 +42,13 @@ func (toggl Toggl) apiPostData(apiMethod string, payload []byte) ([]byte, int) {
 	client := http.Client{}
 	req, err := http.NewRequest("POST", apiPath+apiMethod, requestBody)
 	if err != nil {
-		panic(err)
+		helpers.LogFatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(toggl.Config.ApiKey, "api_token")
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		log.Fatal(err.Error())
 	}
 	defer resp.Body.Close()
 	data, _ := ioutil.ReadAll(resp.Body)
@@ -58,13 +60,13 @@ func (toggl Toggl) apiPutData(apiMethod string, payload []byte) ([]byte, int) {
 	client := http.Client{}
 	req, err := http.NewRequest("PUT", apiPath+apiMethod, requestBody)
 	if err != nil {
-		panic(err)
+		helpers.LogFatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(toggl.Config.ApiKey, "api_token")
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		helpers.LogFatal(err)
 	}
 	defer resp.Body.Close()
 	data, _ := ioutil.ReadAll(resp.Body)
@@ -77,7 +79,9 @@ func (toggl Toggl) GetWorkspaces() []TogglWorkspace {
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
+			)
 		}
 		children, _ := jsonParsed.Children()
 		for _, child := range children {
@@ -100,7 +104,9 @@ func (toggl Toggl) GetProjects() []TogglProject {
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
+			)
 		}
 		children, _ := jsonParsed.Children()
 		for _, child := range children {
@@ -121,7 +127,9 @@ func (toggl Toggl) GetWorkspaceTags() []TogglWorkspaceTag {
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
+			)
 		}
 		children, _ := jsonParsed.Children()
 		for _, child := range children {
@@ -142,7 +150,9 @@ func (toggl Toggl) GetTimeEntries() []TogglTimeEntry {
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
+			)
 		}
 		children, _ := jsonParsed.Children()
 		for _, child := range children {
@@ -181,7 +191,9 @@ func (toggl Toggl) GetRunningTimeEntry() TogglTimeEntry {
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
+			)
 		}
 		children, _ := jsonParsed.Children()
 		for _, child := range children {
@@ -216,7 +228,9 @@ func (toggl Toggl) GetUser() (*string, int) {
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
+			)
 		}
 		fullname := jsonParsed.Path("data.fullname").Data().(string)
 		return &fullname, statusCode
@@ -233,7 +247,9 @@ func (toggl Toggl) CreateTag(tagName string) TogglWorkspaceTag {
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
+			)
 		}
 		workspaceTag = TogglWorkspaceTag{
 			Id:   int(jsonParsed.S("data").Data().(map[string]interface{})["id"].(float64)),
@@ -252,7 +268,9 @@ func (toggl Toggl) CreateProject(projectName string) TogglProject {
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
+			)
 		}
 		project = TogglProject{
 			Id:   int(jsonParsed.S("data").Data().(map[string]interface{})["id"].(float64)),
@@ -289,7 +307,9 @@ func (toggl Toggl) CreateTimeEntry(projectId int, description string, tagJiraDom
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
+			)
 		}
 		timeEntry = TogglTimeEntry{
 			Id:          int(jsonParsed.S("data").Data().(map[string]interface{})["id"].(float64)),
@@ -310,7 +330,9 @@ func (toggl Toggl) StartTimeEntry(projectId int, description string, tagJiraDoma
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
+			)
 		}
 		timeEntry = TogglTimeEntry{
 			Id:          int(jsonParsed.S("data").Data().(map[string]interface{})["id"].(float64)),

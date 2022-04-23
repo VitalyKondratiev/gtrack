@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Jeffail/gabs"
+	"github.com/VitalyKondratiev/gtrack/src/helpers"
 	"github.com/inconshreveable/go-update"
 )
 
@@ -34,11 +35,11 @@ func (github Github) GetLastRelease() GithubRelease {
 	client := http.Client{}
 	req, err := http.NewRequest("GET", releasesUri, nil)
 	if err != nil {
-		panic(err)
+		helpers.LogFatal(err)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		helpers.LogFatal(err)
 	}
 	defer resp.Body.Close()
 	data, _ := ioutil.ReadAll(resp.Body)
@@ -46,7 +47,9 @@ func (github Github) GetLastRelease() GithubRelease {
 	if resp.StatusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(
+				fmt.Errorf("message: unable to parse json (%v)\nurl: %v\n\nresponse:\n%v", err, resp.Request.URL, string(data)),
+			)
 		}
 		platformFiles := GithubFiles{}
 		for _, child := range jsonParsed.Path("assets").Data().([]interface{}) {
@@ -98,22 +101,31 @@ func (github Github) Update() bool {
 	var err error
 	if runtime.GOOS != "darwin" {
 		_bytes, err = ioutil.ReadFile(updateFile)
+		if err != nil {
+			helpers.LogFatal(err)
+		}
 	} else {
 		fmt.Printf("Archive unpacking...\n")
 		tarFile, err := os.Open(updateFile)
 		if err != nil {
-			panic(err)
+			helpers.LogFatal(err)
 		}
 		uncompressedStream, err := gzip.NewReader(tarFile)
+		if err != nil {
+			helpers.LogFatal(err)
+		}
 		tarReader := tar.NewReader(uncompressedStream)
 		tarHeader, err := tarReader.Next()
 		if err != io.EOF && tarHeader.Typeflag == tar.TypeReg {
 			_bytes, err = io.ReadAll(tarReader)
+			if err != nil {
+				helpers.LogFatal(err)
+			}
 		}
 	}
 	err = update.Apply(bytes.NewReader(_bytes), update.Options{})
 	if err != nil {
-		panic(err)
+		helpers.LogFatal(err)
 	} else {
 		os.Remove(updateFile)
 	}

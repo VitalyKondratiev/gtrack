@@ -111,13 +111,6 @@ func CommandList() {
 	)
 	for jiraConfigIndex, jiraConfig := range gconfig.Jira {
 		var _jira = jira.Jira{Config: jiraConfig}
-		fmt.Fprintf(writer,
-			"\t%v: %v",
-			cyan(helpers.GetFormattedDomain(_jira.Config.Domain)),
-			_jira.Config.Username,
-		)
-		writer.Flush()
-		fmt.Println()
 		displayIssues := make(map[string]DisplayIssue)
 		for _, issue := range _jira.GetAssignedIssues() {
 			displayIssues[issue.Key] = DisplayIssue{
@@ -127,6 +120,13 @@ func CommandList() {
 				UncommitedTime: 0,
 			}
 		}
+		fmt.Fprintf(writer,
+			"\t%v: %v",
+			cyan(helpers.GetFormattedDomain(_jira.Config.Domain)),
+			_jira.Config.Username,
+		)
+		writer.Flush()
+		fmt.Println()
 		totalUncommitedTime := 0
 		var notAssignedKeys []string
 		for _, _timeEntry := range _toggl.GetTimeEntries() {
@@ -369,7 +369,7 @@ func CommandUpdate() {
 		if isUpdated {
 			fmt.Printf("Succesfully updated to %s\n", githubRelease.Version)
 		} else {
-			panic(err)
+			helpers.LogFatal(err)
 		}
 	} else {
 		fmt.Println("No available updates")
