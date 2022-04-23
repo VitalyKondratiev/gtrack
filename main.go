@@ -76,7 +76,6 @@ func CommandAuth() {
 			if err != nil {
 				helpers.LogFatal(err)
 			}
-			fmt.Println(optionIndex)
 			var prompt string
 			var secure bool
 			switch optionIndex {
