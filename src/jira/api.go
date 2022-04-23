@@ -25,7 +25,19 @@ func (jira Jira) authenticate() Jira {
 		"password": jira.Config.Password,
 	})
 	responseBody := bytes.NewBuffer(postBody)
-	resp, err := http.Post(helpers.GetFormattedDomain(jira.Config.Domain)+"/rest/auth/1/session", "application/json", responseBody)
+
+	client := http.Client{}
+	req, err := http.NewRequest("POST", helpers.GetFormattedDomain(jira.Config.Domain)+"/rest/auth/1/session", responseBody)
+	if err != nil {
+		helpers.LogFatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	for _, cookie := range jira.Config.Cookies {
+		customCookie := &http.Cookie{Name: cookie.Name, Value: cookie.Value, HttpOnly: true}
+		req.AddCookie(customCookie)
+	}
+	resp, err := client.Do(req)
+
 	if err != nil {
 		fmt.Println(err)
 		return jira
@@ -60,6 +72,10 @@ func (jira Jira) apiGetData(apiMethod string) ([]byte, int) {
 	}
 	authCookie := &http.Cookie{Name: jira.cookieName, Value: jira.cookieValue, HttpOnly: true}
 	req.AddCookie(authCookie)
+	for _, cookie := range jira.Config.Cookies {
+		customCookie := &http.Cookie{Name: cookie.Name, Value: cookie.Value, HttpOnly: true}
+		req.AddCookie(customCookie)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		helpers.LogFatal(err)
@@ -68,6 +84,7 @@ func (jira Jira) apiGetData(apiMethod string) ([]byte, int) {
 	data, _ := ioutil.ReadAll(resp.Body)
 	return data, resp.StatusCode
 }
+
 func (jira Jira) apiPostData(apiMethod string, payload []byte) ([]byte, int) {
 	jira = jira.authenticate()
 	requestBody := bytes.NewBuffer(payload)
@@ -79,6 +96,10 @@ func (jira Jira) apiPostData(apiMethod string, payload []byte) ([]byte, int) {
 	req.Header.Set("Content-Type", "application/json")
 	authCookie := &http.Cookie{Name: jira.cookieName, Value: jira.cookieValue, HttpOnly: true}
 	req.AddCookie(authCookie)
+	for _, cookie := range jira.Config.Cookies {
+		customCookie := &http.Cookie{Name: cookie.Name, Value: cookie.Value, HttpOnly: true}
+		req.AddCookie(customCookie)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		helpers.LogFatal(err)

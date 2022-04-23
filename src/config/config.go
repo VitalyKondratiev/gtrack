@@ -15,10 +15,16 @@ import (
 
 const userConfigName = "gtrack.json"
 
+type CustomCookie struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
 type JiraConfig struct {
-	Domain   string `json:"domain"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Domain   string         `json:"domain"`
+	Username string         `json:"username"`
+	Password string         `json:"password"`
+	Cookies  []CustomCookie `json:"cookies"`
 }
 
 type TogglConfig struct {
