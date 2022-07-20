@@ -172,11 +172,13 @@ func CommandList() {
 		writer.Flush()
 		fmt.Println()
 		totalUncommitedTime := 0
+		uncommitedTasksCount := 0
 		var notAssignedKeys []string
 		for _, _timeEntry := range _toggl.GetTimeEntries() {
 			if !_timeEntry.IsUncommitedEntry() || !_timeEntry.IsJiraDomainEntry(_jira.Config.Domain) {
 				continue
 			}
+			uncommitedTasksCount += 1
 			uncommitedTime := _timeEntry.GetDuration()
 			totalUncommitedTime += uncommitedTime
 			if val, ok := displayIssues[_timeEntry.Description]; ok {
@@ -246,10 +248,11 @@ func CommandList() {
 			writer.Flush()
 			fmt.Println()
 			fmt.Fprintf(writer,
-				"\t%s %s: %v\n",
+				"\t%s %s: %v (%d tasks)\n",
 				yellow("Uncommited time on"),
 				yellow(_jira.Config.Domain),
 				bold(helpers.FormatTimeFromUnix(totalUncommitedTime)),
+				uncommitedTasksCount,
 			)
 		} else {
 			fmt.Fprintf(writer,
