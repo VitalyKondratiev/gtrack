@@ -2,8 +2,9 @@ package toggl
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"regexp"
@@ -14,7 +15,7 @@ import (
 	"github.com/VitalyKondratiev/gtrack/src/helpers"
 )
 
-const apiPath = "https://api.track.toggl.com/api/v8/"
+const apiPath = "https://api.track.toggl.com/api/v9/"
 
 func (toggl Toggl) getIssueKey(description string) string {
 	keyRegex := regexp.MustCompile(`(?m)\w*-\d*`)
@@ -33,7 +34,23 @@ func (toggl Toggl) apiGetData(apiMethod string) ([]byte, int) {
 		helpers.LogFatal(err)
 	}
 	defer resp.Body.Close()
-	data, _ := ioutil.ReadAll(resp.Body)
+	data, _ := io.ReadAll(resp.Body)
+	return data, resp.StatusCode
+}
+
+func (toggl Toggl) apiPatchData(apiMethod string) ([]byte, int) {
+	client := http.Client{}
+	req, err := http.NewRequest("PATCH", apiPath+apiMethod, nil)
+	if err != nil {
+		helpers.LogFatal(err)
+	}
+	req.SetBasicAuth(toggl.Config.ApiKey, "api_token")
+	resp, err := client.Do(req)
+	if err != nil {
+		helpers.LogFatal(err)
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(resp.Body)
 	return data, resp.StatusCode
 }
 
@@ -51,7 +68,7 @@ func (toggl Toggl) apiPostData(apiMethod string, payload []byte) ([]byte, int) {
 		log.Fatal(err.Error())
 	}
 	defer resp.Body.Close()
-	data, _ := ioutil.ReadAll(resp.Body)
+	data, _ := io.ReadAll(resp.Body)
 	return data, resp.StatusCode
 }
 
@@ -69,7 +86,7 @@ func (toggl Toggl) apiPutData(apiMethod string, payload []byte) ([]byte, int) {
 		helpers.LogFatal(err)
 	}
 	defer resp.Body.Close()
-	data, _ := ioutil.ReadAll(resp.Body)
+	data, _ := io.ReadAll(resp.Body)
 	return data, resp.StatusCode
 }
 
@@ -99,7 +116,8 @@ func (toggl Toggl) GetWorkspaces() []TogglWorkspace {
 }
 
 func (toggl Toggl) GetProjects() []TogglProject {
-	data, statusCode := toggl.apiGetData("workspaces/" + strconv.Itoa(toggl.Config.WorkspaceId) + "/projects")
+	method := fmt.Sprintf("workspaces/%d/projects", toggl.Config.WorkspaceId)
+	data, statusCode := toggl.apiGetData(method)
 	var projects []TogglProject
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
@@ -145,80 +163,25 @@ func (toggl Toggl) GetWorkspaceTags() []TogglWorkspaceTag {
 }
 
 func (toggl Toggl) GetTimeEntries() []TogglTimeEntry {
-	data, statusCode := toggl.apiGetData("time_entries")
+	data, statusCode := toggl.apiGetData("me/time_entries")
 	var timeEntries []TogglTimeEntry
 	if statusCode == 200 {
-		jsonParsed, err := gabs.ParseJSON(data)
+		err := json.Unmarshal(data, &timeEntries)
 		if err != nil {
-			helpers.LogFatal(
-				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
-			)
+			log.Fatalf("Error parsing JSON: %v\nResponse:\n%v", err, string(data))
 		}
-		children, _ := jsonParsed.Children()
-		for _, child := range children {
-			_timeEntry := child.Data().(map[string]interface{})
-			var tags []string
-			var description string
-			var stop string
-			if _timeEntry["tags"] != nil {
-				for _, tag := range _timeEntry["tags"].([]interface{}) {
-					tags = append(tags, tag.(string))
-				}
-			}
-			if _timeEntry["description"] != nil {
-				description = _timeEntry["description"].(string)
-			}
-			if _timeEntry["stop"] != nil {
-				stop = _timeEntry["stop"].(string)
-			}
-			timeEntry := TogglTimeEntry{
-				Id:          int(_timeEntry["id"].(float64)),
-				Description: toggl.getIssueKey(description),
-				Tags:        tags,
-				duration:    int(_timeEntry["duration"].(float64)),
-				Start:       _timeEntry["start"].(string),
-				Stop:        stop,
-			}
-			timeEntries = append(timeEntries, timeEntry)
+		for i, entry := range timeEntries {
+			timeEntries[i].Description = toggl.getIssueKey(entry.Description)
 		}
 	}
 	return timeEntries
 }
 
 func (toggl Toggl) GetRunningTimeEntry() TogglTimeEntry {
-	data, statusCode := toggl.apiGetData("time_entries/current")
+	data, statusCode := toggl.apiGetData("me/time_entries/current")
 	var timeEntry TogglTimeEntry
 	if statusCode == 200 {
-		jsonParsed, err := gabs.ParseJSON(data)
-		if err != nil {
-			helpers.LogFatal(
-				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
-			)
-		}
-		children, _ := jsonParsed.Children()
-		for _, child := range children {
-			if child.String() == "null" || child.String() == "{}" {
-				return timeEntry
-			}
-			_timeEntry := child.Data().(map[string]interface{})
-			var tags []string
-			var description string
-			if _timeEntry["tags"] != nil {
-				for _, tag := range _timeEntry["tags"].([]interface{}) {
-					tags = append(tags, tag.(string))
-				}
-			}
-			if _timeEntry["description"] != nil {
-				description = _timeEntry["description"].(string)
-			}
-			timeEntry = TogglTimeEntry{
-				Id:          int(_timeEntry["id"].(float64)),
-				Description: toggl.getIssueKey(description),
-				Tags:        tags,
-				duration:    int(_timeEntry["duration"].(float64)),
-				Start:       _timeEntry["start"].(string),
-			}
-		}
+		json.Unmarshal(data, &timeEntry)
 	}
 	return timeEntry
 }
@@ -232,7 +195,7 @@ func (toggl Toggl) GetUser() (*string, int) {
 				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
 			)
 		}
-		fullname := jsonParsed.Path("data.fullname").Data().(string)
+		fullname := jsonParsed.Path("fullname").Data().(string)
 		return &fullname, statusCode
 	}
 	return nil, statusCode
@@ -262,9 +225,9 @@ func (toggl Toggl) CreateTag(tagName string) TogglWorkspaceTag {
 func (toggl Toggl) CreateProject(projectName string) TogglProject {
 	var project TogglProject
 	jsonObj := gabs.New()
-	jsonObj.SetP(projectName, "project.name")
-	jsonObj.SetP(toggl.Config.WorkspaceId, "project.wid")
-	data, statusCode := toggl.apiPostData("projects", jsonObj.Bytes())
+	jsonObj.SetP(projectName, "name")
+	method := fmt.Sprintf("workspaces/%d/projects", toggl.Config.WorkspaceId)
+	data, statusCode := toggl.apiPostData(method, jsonObj.Bytes())
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
@@ -287,46 +250,24 @@ func populateTimeEntry(workspaceId int, projectId int, description string, jiraT
 		t.Year(), t.Month(), t.Day(),
 		t.Hour(), t.Minute(), t.Second(), tZone)
 	jsonObj := gabs.New()
-	jsonObj.SetP(projectId, "time_entry.pid")
-	jsonObj.SetP(workspaceId, "time_entry.wid")
-	jsonObj.SetP(description, "time_entry.description")
-	jsonObj.SetP(time, "time_entry.start")
-	jsonObj.SetP(0, "time_entry.duration")
-	jsonObj.SetP("gtrack", "time_entry.created_with")
-	jsonObj.ArrayP("time_entry.tags")
-	jsonObj.ArrayAppendP(tagUncommitedName, "time_entry.tags")
-	jsonObj.ArrayAppendP(jiraTag, "time_entry.tags")
+	jsonObj.SetP(projectId, "project_id")
+	jsonObj.SetP(workspaceId, "wid")
+	jsonObj.SetP(description, "description")
+	jsonObj.SetP(time, "start")
+	jsonObj.SetP(-1, "duration")
+	jsonObj.SetP("gtrack", "created_with")
+	jsonObj.ArrayP("tags")
+	jsonObj.ArrayAppendP(tagUncommitedName, "tags")
+	jsonObj.ArrayAppendP(jiraTag, "tags")
 	return jsonObj
-}
-
-func (toggl Toggl) CreateTimeEntry(projectId int, description string, tagJiraDomain string) TogglTimeEntry {
-	var timeEntry TogglTimeEntry
-	tagJiraDomain = "gtrack:" + tagJiraDomain
-	jsonObj := populateTimeEntry(toggl.Config.WorkspaceId, projectId, description, tagJiraDomain)
-	data, statusCode := toggl.apiPostData("time_entries", jsonObj.Bytes())
-	if statusCode == 200 {
-		jsonParsed, err := gabs.ParseJSON(data)
-		if err != nil {
-			helpers.LogFatal(
-				fmt.Errorf("message: unable to parse json (%v)\n\nresponse:\n%v", err, string(data)),
-			)
-		}
-		timeEntry = TogglTimeEntry{
-			Id:          int(jsonParsed.S("data").Data().(map[string]interface{})["id"].(float64)),
-			Description: description,
-			Tags:        []string{tagUncommitedName},
-			duration:    0,
-			Start:       jsonParsed.S("data").Data().(map[string]interface{})["start"].(string),
-		}
-	}
-	return timeEntry
 }
 
 func (toggl Toggl) StartTimeEntry(projectId int, description string, tagJiraDomain string) TogglTimeEntry {
 	var timeEntry TogglTimeEntry
 	tagJiraDomain = "gtrack:" + tagJiraDomain
+	method := fmt.Sprintf("workspaces/%d/time_entries", toggl.Config.WorkspaceId)
 	jsonObj := populateTimeEntry(toggl.Config.WorkspaceId, projectId, description, tagJiraDomain)
-	data, statusCode := toggl.apiPostData("time_entries/start", jsonObj.Bytes())
+	data, statusCode := toggl.apiPostData(method, jsonObj.Bytes())
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
@@ -335,28 +276,32 @@ func (toggl Toggl) StartTimeEntry(projectId int, description string, tagJiraDoma
 			)
 		}
 		timeEntry = TogglTimeEntry{
-			Id:          int(jsonParsed.S("data").Data().(map[string]interface{})["id"].(float64)),
+			Id:          int(jsonParsed.Data().(map[string]interface{})["id"].(float64)),
 			Description: description,
 			Tags:        []string{tagUncommitedName, tagJiraDomain},
-			duration:    0,
-			Start:       jsonParsed.S("data").Data().(map[string]interface{})["start"].(string),
+			Duration:    0,
+			Start:       jsonParsed.Data().(map[string]interface{})["start"].(string),
 		}
 	}
 	return timeEntry
 }
 
 func (toggl Toggl) StopTimeEntry(timeEntry TogglTimeEntry) bool {
-	jsonObj := gabs.New()
-	_, statusCode := toggl.apiPutData("time_entries/"+strconv.Itoa(timeEntry.Id)+"/stop", jsonObj.Bytes())
+	method := fmt.Sprintf("workspaces/%d/time_entries/%d/stop", toggl.Config.WorkspaceId, timeEntry.Id)
+	_, statusCode := toggl.apiPatchData(method)
 	return statusCode == 200
 }
 
-func (toggl Toggl) UpdateTimeEntryTags(timeEntry TogglTimeEntry, tags []string) bool {
+func (toggl Toggl) UpdateTimeEntryTags(timeEntry TogglTimeEntry, removeUncommited bool) bool {
 	jsonObj := gabs.New()
-	jsonObj.ArrayP("time_entry.tags")
-	for _, tag := range tags {
-		jsonObj.ArrayAppendP(tag, "time_entry.tags")
+	if removeUncommited {
+		jsonObj.SetP("remove", "tag_action")
+	} else {
+		jsonObj.SetP("add", "tag_action")
 	}
-	_, statusCode := toggl.apiPutData("time_entries/"+strconv.Itoa(timeEntry.Id), jsonObj.Bytes())
+	jsonObj.ArrayP("tags")
+	jsonObj.ArrayAppendP(tagUncommitedName, "tags")
+	method := fmt.Sprintf("workspaces/%d/time_entries/%d", toggl.Config.WorkspaceId, timeEntry.Id)
+	_, statusCode := toggl.apiPutData(method, jsonObj.Bytes())
 	return statusCode == 200
 }

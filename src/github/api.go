@@ -6,7 +6,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -42,7 +41,7 @@ func (github Github) GetLastRelease() GithubRelease {
 		helpers.LogFatal(err)
 	}
 	defer resp.Body.Close()
-	data, _ := ioutil.ReadAll(resp.Body)
+	data, _ := io.ReadAll(resp.Body)
 	var release GithubRelease
 	if resp.StatusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
@@ -100,7 +99,7 @@ func (github Github) Update() bool {
 	var _bytes []byte
 	var err error
 	if runtime.GOOS != "darwin" {
-		_bytes, err = ioutil.ReadFile(updateFile)
+		_bytes, err = os.ReadFile(updateFile)
 		if err != nil {
 			helpers.LogFatal(err)
 		}

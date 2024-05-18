@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -13,7 +12,7 @@ import (
 	"github.com/kirsle/configdir"
 )
 
-const userConfigName = "gtrack.json"
+const UserConfigName = "gtrack.json"
 
 type CustomCookie struct {
 	Name  string `json:"name"`
@@ -49,18 +48,18 @@ func (config GlobalConfig) SetConfig(jiraConfig JiraConfig, togglConfig TogglCon
 // SaveMainConfig : save main application configuration
 func (config GlobalConfig) SaveConfig() {
 	configPath := configdir.LocalConfig("gtrack")
-	_, err := os.Open(configPath + "/" + userConfigName)
+	_, err := os.Open(configPath + "/" + UserConfigName)
 	if err != nil {
 		os.MkdirAll(configPath, os.ModePerm)
 	}
 	file, _ := json.MarshalIndent(config, "", "\t")
-	_ = ioutil.WriteFile(configPath+"/"+userConfigName, file, 0644)
+	_ = os.WriteFile(configPath+"/"+UserConfigName, file, 0644)
 }
 
 // LoadMainConfig : get main application configuration
 func (config GlobalConfig) LoadConfig(needAuthorized bool) GlobalConfig {
 	configPath := configdir.LocalConfig("gtrack")
-	configFile, err := ioutil.ReadFile(configPath + "/" + userConfigName)
+	configFile, err := os.ReadFile(configPath + "/" + UserConfigName)
 	if err != nil {
 		if needAuthorized {
 			fmt.Println("Configuration file not found, try to auth")
@@ -78,7 +77,7 @@ func (config GlobalConfig) LoadConfig(needAuthorized bool) GlobalConfig {
 
 func RemoveConfig() {
 	configPath := configdir.LocalConfig("gtrack")
-	err := os.Remove(configPath + "/" + userConfigName)
+	err := os.Remove(configPath + "/" + UserConfigName)
 	if err != nil {
 		fmt.Println("Can't remove configuration file")
 		os.Exit(1)

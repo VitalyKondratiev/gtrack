@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -44,7 +44,7 @@ func (jira Jira) authenticate() Jira {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == 200 {
-		data, _ := ioutil.ReadAll(resp.Body)
+		data, _ := io.ReadAll(resp.Body)
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
 			helpers.LogFatal(
@@ -81,7 +81,7 @@ func (jira Jira) apiGetData(apiMethod string) ([]byte, int) {
 		helpers.LogFatal(err)
 	}
 	defer resp.Body.Close()
-	data, _ := ioutil.ReadAll(resp.Body)
+	data, _ := io.ReadAll(resp.Body)
 	return data, resp.StatusCode
 }
 
@@ -105,7 +105,7 @@ func (jira Jira) apiPostData(apiMethod string, payload []byte) ([]byte, int) {
 		helpers.LogFatal(err)
 	}
 	defer resp.Body.Close()
-	data, _ := ioutil.ReadAll(resp.Body)
+	data, _ := io.ReadAll(resp.Body)
 	return data, resp.StatusCode
 }
 

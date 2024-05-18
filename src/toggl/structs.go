@@ -25,10 +25,10 @@ type TogglWorkspaceTag struct {
 }
 
 type TogglTimeEntry struct {
-	Id          int
-	Description string
-	Tags        []string
-	duration    int
-	Start       string
-	Stop        string
+	Id          int      `json:"id"`
+	Description string   `json:"description"`
+	Tags        []string `json:"tags"`
+	Duration    int      `json:"duration"`
+	Start       string   `json:"start"`
+	Stop        string   `json:"stop"`
 }

@@ -29,14 +29,14 @@ func (togglTimeEntry TogglTimeEntry) IsJiraDomainEntry(jiraDomain string) bool {
 }
 
 func (togglTimeEntry TogglTimeEntry) IsCurrent() bool {
-	return togglTimeEntry.duration < 0
+	return togglTimeEntry.Duration < 0
 }
 
 func (togglTimeEntry TogglTimeEntry) GetDuration() int {
-	if togglTimeEntry.duration >= 0 {
-		return togglTimeEntry.duration
+	if togglTimeEntry.Duration >= 0 {
+		return togglTimeEntry.Duration
 	} else {
-		startTime := time.Unix(int64(togglTimeEntry.duration)*-1, 0)
+		startTime, _ := time.Parse(time.RFC3339, togglTimeEntry.Start)
 		diff := time.Since(startTime)
 		return int(diff.Seconds())
 	}
@@ -146,11 +146,7 @@ func (toggl Toggl) CommitIssues(timeEntries []TogglTimeEntry, commit bool) (bool
 	startTimes := make(map[int]time.Time)
 	for _, _timeEntry := range timeEntries {
 		if _timeEntry.IsUncommitedEntry() || !commit {
-			tags := []string{}
-			if !commit {
-				tags = append(tags, tagUncommitedName)
-			}
-			untagState := toggl.UpdateTimeEntryTags(_timeEntry, tags)
+			untagState := toggl.UpdateTimeEntryTags(_timeEntry, commit)
 			if !untagState {
 				state = false
 			} else {

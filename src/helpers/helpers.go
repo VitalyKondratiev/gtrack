@@ -2,8 +2,6 @@ package helpers
 
 import (
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
 	"strings"
 )
 
@@ -21,20 +19,4 @@ func GetFormattedDomain(domain string) string {
 	} else {
 		return "https://" + domain
 	}
-}
-
-func TryGetGitDirectory(dir string) (string, bool) {
-	isGitRoot := false
-	files, _ := ioutil.ReadDir(dir)
-	for _, f := range files {
-		if f.Name() == ".git" {
-			isGitRoot = true
-			break
-		}
-	}
-	if !isGitRoot && dir != filepath.Clean(filepath.Join(dir, "..")) {
-		dir = filepath.Clean(filepath.Join(dir, ".."))
-		dir, isGitRoot = TryGetGitDirectory(dir)
-	}
-	return dir, isGitRoot
 }
