@@ -35,6 +35,7 @@ func main() {
 		case "update":
 			cmd = command.GithubUpdateCommand()
 		case "help":
+			fallthrough
 		default:
 			cmd = command.HelpCommand()
 		}
