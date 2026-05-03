@@ -7,12 +7,11 @@ import (
 	"time"
 
 	"github.com/VitalyKondratiev/gtrack/src/helpers"
-
-	"github.com/Jeffail/gabs"
 	"github.com/kirsle/configdir"
 )
 
 const UserConfigName = "gtrack.json"
+const CurrentConfigVersion = 3
 
 type CustomCookie struct {
 	Name  string `json:"name"`
@@ -20,10 +19,9 @@ type CustomCookie struct {
 }
 
 type JiraConfig struct {
-	Domain   string         `json:"domain"`
-	Username string         `json:"username"`
-	Password string         `json:"password"`
-	Cookies  []CustomCookie `json:"cookies"`
+	Domain  string         `json:"domain"`
+	Token   string         `json:"token"`
+	Cookies []CustomCookie `json:"cookies"`
 }
 
 type TogglConfig struct {
@@ -39,7 +37,7 @@ type GlobalConfig struct {
 }
 
 func (config GlobalConfig) SetConfig(jiraConfig JiraConfig, togglConfig TogglConfig) GlobalConfig {
-	config.ConfigVersion = 2
+	config.ConfigVersion = CurrentConfigVersion
 	config.Jira = []JiraConfig{jiraConfig}
 	config.Toggl = togglConfig
 	return config
@@ -47,6 +45,7 @@ func (config GlobalConfig) SetConfig(jiraConfig JiraConfig, togglConfig TogglCon
 
 // SaveMainConfig : save main application configuration
 func (config GlobalConfig) SaveConfig() {
+	config.ConfigVersion = CurrentConfigVersion
 	configPath := configdir.LocalConfig("gtrack")
 	_, err := os.Open(configPath + "/" + UserConfigName)
 	if err != nil {
@@ -69,8 +68,8 @@ func (config GlobalConfig) LoadConfig(needAuthorized bool) GlobalConfig {
 		}
 	}
 	_ = json.Unmarshal([]byte(configFile), &config)
-	if config.ConfigVersion == 0 {
-		config = updateConfigToV2(configFile)
+	if config.ConfigVersion != CurrentConfigVersion {
+		helpers.LogFatal(fmt.Errorf("ConfigVersion is outdated. Try to reauth"))
 	}
 	return config
 }
@@ -82,28 +81,6 @@ func RemoveConfig() {
 		fmt.Println("Can't remove configuration file")
 		os.Exit(1)
 	}
-}
-
-func updateConfigToV2(oldConfigFile []byte) GlobalConfig {
-	jsonOld, _ := gabs.ParseJSON(oldConfigFile)
-	jiraJson := jsonOld.Data().(map[string]interface{})["jira"].(map[string]interface{})
-	jiraConfig := JiraConfig{
-		Domain:   jiraJson["domain"].(string),
-		Username: jiraJson["username"].(string),
-		Password: jiraJson["password"].(string),
-	}
-	togglJson := jsonOld.Data().(map[string]interface{})["toggl"].(map[string]interface{})
-	togglConfig := TogglConfig{
-		ApiKey:      togglJson["apiKey"].(string),
-		WorkspaceId: int(togglJson["workspaceId"].(float64)),
-	}
-	newConfig := GlobalConfig{
-		ConfigVersion: 2,
-		Jira:          []JiraConfig{jiraConfig},
-		Toggl:         togglConfig,
-	}
-	newConfig.SaveConfig()
-	return newConfig
 }
 
 func (config GlobalConfig) ChangeConfiguration() int {
@@ -119,6 +96,7 @@ func (config GlobalConfig) ChangeConfiguration() int {
 }
 
 func (config GlobalConfig) SelectJiraInstance(indexes []int) int {
+	var indexMapping = make(map[int]int)
 	var jiraDomains []string
 	for jiraIndex, jiraConfig := range config.Jira {
 		if len(indexes) != 0 {
@@ -130,10 +108,11 @@ func (config GlobalConfig) SelectJiraInstance(indexes []int) int {
 				}
 			}
 			if !indexIsAllowed {
-				break
+				continue
 			}
 		}
 		jiraDomains = append(jiraDomains, helpers.GetFormattedDomain(jiraConfig.Domain))
+		indexMapping[len(jiraDomains)-1] = jiraIndex
 	}
 	user_input, err := helpers.GetVariant(
 		"Select Jira instance",
@@ -143,5 +122,5 @@ func (config GlobalConfig) SelectJiraInstance(indexes []int) int {
 	if err != nil {
 		os.Exit(1)
 	}
-	return user_input
+	return indexMapping[user_input]
 }

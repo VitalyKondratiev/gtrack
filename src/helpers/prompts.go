@@ -1,6 +1,8 @@
 package helpers
 
 import (
+	"errors"
+	"os"
 	"regexp"
 
 	"github.com/manifoldco/promptui"
@@ -20,6 +22,13 @@ func GetVariant(prompt string, variants interface{}, template string) (int, erro
 		},
 	}
 	user_input, _, err := v_prompt.Run()
+
+	if err != nil {
+		if errors.Is(err, promptui.ErrInterrupt) || errors.Is(err, promptui.ErrEOF) {
+			os.Exit(0)
+		}
+	}
+
 	return user_input, err
 }
 
@@ -35,5 +44,13 @@ func GetString(prompt string, secure bool) (string, error) {
 			Label: prompt,
 		}
 	}
-	return s_prompt.Run()
+	user_input, err := s_prompt.Run()
+
+	if err != nil {
+		if errors.Is(err, promptui.ErrInterrupt) || errors.Is(err, promptui.ErrEOF) {
+			os.Exit(0)
+		}
+	}
+
+	return user_input, err
 }

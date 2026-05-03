@@ -32,6 +32,9 @@ func (cmd *listCommand) Execute() {
 	gconfig := (config.GlobalConfig{}).LoadConfig(true)
 	_toggl := toggl.Toggl{Config: gconfig.Toggl}
 	togglUsername, _ := _toggl.GetUser()
+	if togglUsername == nil {
+		helpers.LogFatal(fmt.Errorf("Toggl user getting error"))
+	}
 	const padding = 3
 	writer := tabwriter.NewWriter(color.Output, 0, 0, padding, ' ', tabwriter.StripEscape)
 	blue := color.New(color.FgHiBlue).SprintFunc()
@@ -39,7 +42,7 @@ func (cmd *listCommand) Execute() {
 	yellow := color.New(color.FgHiYellow).SprintFunc()
 	bold := color.New(color.Bold).SprintFunc()
 	red := color.New(color.FgHiRed).SprintFunc()
-	if duration, _ := time.ParseDuration("6h"); gconfig.UpdateNotify.Add(duration).Sub(time.Now()) < 0 {
+	if duration, _ := time.ParseDuration("6h"); time.Until(gconfig.UpdateNotify.Add(duration)) < 0 {
 		hasUpdate, githubRelease := github.Github{}.HasUpdate()
 		if hasUpdate {
 			fmt.Fprintf(writer, "\t%v\n\n", red("Update to ", githubRelease.Version, " available, run 'gtrack update' for new version "))
@@ -54,6 +57,11 @@ func (cmd *listCommand) Execute() {
 	)
 	for jiraConfigIndex, jiraConfig := range gconfig.Jira {
 		var _jira = jira.Jira{Config: jiraConfig}
+		jiraUsername, _ := _jira.GetCurrentUser()
+		jiraAccountLabel := "token auth"
+		if jiraUsername != nil {
+			jiraAccountLabel = *jiraUsername
+		}
 		displayIssues := make(map[string]displayIssue)
 		for _, issue := range _jira.GetAssignedIssues() {
 			displayIssues[issue.Key] = displayIssue{
@@ -66,7 +74,7 @@ func (cmd *listCommand) Execute() {
 		fmt.Fprintf(writer,
 			"\t%v: %v",
 			cyan(helpers.GetFormattedDomain(_jira.Config.Domain)),
-			_jira.Config.Username,
+			jiraAccountLabel,
 		)
 		writer.Flush()
 		fmt.Println()

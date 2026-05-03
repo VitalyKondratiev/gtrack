@@ -2,10 +2,10 @@ package jira
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -18,63 +18,23 @@ func (jira Jira) getApiPath() string {
 	return helpers.GetFormattedDomain(jira.Config.Domain) + "/rest/api/latest/"
 }
 
-func (jira Jira) authenticate() Jira {
-	jira.isLoggedIn = false
-	postBody, _ := json.Marshal(map[string]string{
-		"username": jira.Config.Username,
-		"password": jira.Config.Password,
-	})
-	responseBody := bytes.NewBuffer(postBody)
+func (jira Jira) applyAuth(req *http.Request) error {
+	if jira.Config.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+jira.Config.Token)
+		return nil
+	}
 
-	client := http.Client{}
-	req, err := http.NewRequest("POST", helpers.GetFormattedDomain(jira.Config.Domain)+"/rest/auth/1/session", responseBody)
-	if err != nil {
-		helpers.LogFatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	for _, cookie := range jira.Config.Cookies {
-		customCookie := &http.Cookie{Name: cookie.Name, Value: cookie.Value, HttpOnly: true}
-		req.AddCookie(customCookie)
-	}
-	resp, err := client.Do(req)
-
-	if err != nil {
-		fmt.Println(err)
-		return jira
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == 200 {
-		data, _ := io.ReadAll(resp.Body)
-		jsonParsed, err := gabs.ParseJSON(data)
-		if err != nil {
-			helpers.LogFatal(
-				fmt.Errorf("message: unable to parse json (%v)\nurl: %v\n\nresponse:\n%v", err, resp.Request.URL, string(data)),
-			)
-		}
-		sessionName := jsonParsed.Path("session.name").Data().(string)
-		sessionValue := jsonParsed.Path("session.value").Data().(string)
-		jira.cookieName = sessionName
-		jira.cookieValue = sessionValue
-		jira.isLoggedIn = true
-		return jira
-	} else {
-		fmt.Println("HTTP status code is: " + strconv.Itoa(resp.StatusCode))
-	}
-	return jira
+	return fmt.Errorf("You not authorized")
 }
 
 func (jira Jira) apiGetData(apiMethod string) ([]byte, int) {
-	jira = jira.authenticate()
 	client := http.Client{}
 	req, err := http.NewRequest("GET", jira.getApiPath()+apiMethod, nil)
 	if err != nil {
 		helpers.LogFatal(err)
 	}
-	authCookie := &http.Cookie{Name: jira.cookieName, Value: jira.cookieValue, HttpOnly: true}
-	req.AddCookie(authCookie)
-	for _, cookie := range jira.Config.Cookies {
-		customCookie := &http.Cookie{Name: cookie.Name, Value: cookie.Value, HttpOnly: true}
-		req.AddCookie(customCookie)
+	if err = jira.applyAuth(req); err != nil {
+		helpers.LogFatal(err)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -86,7 +46,6 @@ func (jira Jira) apiGetData(apiMethod string) ([]byte, int) {
 }
 
 func (jira Jira) apiPostData(apiMethod string, payload []byte) ([]byte, int) {
-	jira = jira.authenticate()
 	requestBody := bytes.NewBuffer(payload)
 	client := http.Client{}
 	req, err := http.NewRequest("POST", jira.getApiPath()+apiMethod, requestBody)
@@ -94,11 +53,8 @@ func (jira Jira) apiPostData(apiMethod string, payload []byte) ([]byte, int) {
 		helpers.LogFatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	authCookie := &http.Cookie{Name: jira.cookieName, Value: jira.cookieValue, HttpOnly: true}
-	req.AddCookie(authCookie)
-	for _, cookie := range jira.Config.Cookies {
-		customCookie := &http.Cookie{Name: cookie.Name, Value: cookie.Value, HttpOnly: true}
-		req.AddCookie(customCookie)
+	if err = jira.applyAuth(req); err != nil {
+		helpers.LogFatal(err)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -110,7 +66,8 @@ func (jira Jira) apiPostData(apiMethod string, payload []byte) ([]byte, int) {
 }
 
 func (jira Jira) GetAssignedIssues() []JiraIssue {
-	data, statusCode := jira.apiGetData("search?jql=assignee=" + jira.Config.Username + "&fields=summary,project")
+	jql := "assignee=currentUser()"
+	data, statusCode := jira.apiGetData("search?jql=" + url.QueryEscape(jql) + "&fields=summary,project")
 	var tasks []JiraIssue
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
@@ -141,7 +98,7 @@ func (jira Jira) GetIssuesByField(values []string, field string) []JiraIssue {
 	for _, value := range values {
 		statements = append(statements, fmt.Sprintf("%s=%s", field, value))
 	}
-	data, statusCode := jira.apiGetData("search?jql=" + strings.Join(statements, "%20or%20") + "&fields=summary,project")
+	data, statusCode := jira.apiGetData("search?jql=" + url.QueryEscape(strings.Join(statements, " or ")) + "&fields=summary,project")
 	if statusCode == 200 {
 		jsonParsed, err := gabs.ParseJSON(data)
 		if err != nil {
@@ -163,6 +120,24 @@ func (jira Jira) GetIssuesByField(values []string, field string) []JiraIssue {
 		}
 	}
 	return tasks
+}
+
+func (jira Jira) GetCurrentUser() (*string, int) {
+	data, statusCode := jira.apiGetData("myself")
+	if statusCode == 200 {
+		jsonParsed, err := gabs.ParseJSON(data)
+		if err == nil {
+			for _, field := range []string{"displayName", "name", "emailAddress"} {
+				if value := jsonParsed.Path(field).Data(); value != nil {
+					currentUser := value.(string)
+					return &currentUser, statusCode
+				}
+			}
+		}
+	}
+
+	currentUser := "token auth"
+	return &currentUser, statusCode
 }
 
 func (jira Jira) SetWorklogEntry(issueId int, duration int, startTime time.Time) bool {

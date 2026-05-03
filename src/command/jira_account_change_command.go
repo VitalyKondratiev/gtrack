@@ -25,9 +25,7 @@ func (cmd *jiraAccountChangeCommand) Execute() {
 	case 0:
 		cmd.updateJiraDomain(&cfg, jiraIndex)
 	case 1:
-		cmd.updateJiraUsername(&cfg, jiraIndex)
-	case 2:
-		cmd.updateJiraPassword(&cfg, jiraIndex)
+		cmd.updateJiraToken(&cfg, jiraIndex)
 	}
 
 	cfg.SaveConfig()
@@ -44,26 +42,16 @@ func (cmd *jiraAccountChangeCommand) updateJiraDomain(cfg *config.GlobalConfig, 
 	cfg.Jira[jiraIndex].Domain = optionValue
 }
 
-func (cmd *jiraAccountChangeCommand) updateJiraUsername(cfg *config.GlobalConfig, jiraIndex int) {
+func (cmd *jiraAccountChangeCommand) updateJiraToken(cfg *config.GlobalConfig, jiraIndex int) {
 	optionValue, err := helpers.GetString(
-		fmt.Sprintf("Enter your username (%v)", cfg.Jira[jiraIndex].Username),
-		false,
+		"Enter Jira access token",
+		true,
 	)
 	if err != nil {
 		os.Exit(0)
 	}
-	cfg.Jira[jiraIndex].Username = optionValue
-}
-
-func (cmd *jiraAccountChangeCommand) updateJiraPassword(cfg *config.GlobalConfig, jiraIndex int) {
-	optionValue, err := helpers.GetString(
-		"Enter password of your Jira instance",
-		false,
-	)
-	if err != nil {
-		os.Exit(0)
-	}
-	cfg.Jira[jiraIndex].Password = optionValue
+	cfg.Jira[jiraIndex].Token = optionValue
+	cfg.Jira[jiraIndex].Cookies = nil
 }
 
 func (cmd *jiraAccountChangeCommand) getUserChoice() int {
@@ -71,8 +59,7 @@ func (cmd *jiraAccountChangeCommand) getUserChoice() int {
 		"Select value for changing",
 		[]string{
 			"Domain",
-			"Username",
-			"Password",
+			"Access token",
 		},
 		"{{ . }} ",
 	)

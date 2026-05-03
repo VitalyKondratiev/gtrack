@@ -3,7 +3,7 @@ Jira + Toggle CLI time tracker
 
 ### Authorization
 For authorization you need API key for Toggl. You can get it on https://track.toggl.com/profile page  
-Use `gtrack auth`, and follow prompts (you will need to provide a domain, login, password for Jira, and API key and select workspace for Toggl)  
+Use `gtrack auth`, and follow prompts (you will need to provide a domain, Jira access token, and API key and select workspace for Toggl)
 
 ### List your issues
 Use `gtrack list` for viewing your Jira issues with uncommited time  

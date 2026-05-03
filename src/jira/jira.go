@@ -2,7 +2,6 @@ package jira
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/VitalyKondratiev/gtrack/src/helpers"
@@ -20,22 +19,24 @@ func (jira Jira) SetConfig() Jira {
 	}
 	jira.Config.Domain = result
 
-	result, err = helpers.GetString("Enter your username", false)
+	result, err = helpers.GetString("Enter your Jira access token", true)
 	if err != nil {
 		return jira
 	}
-	jira.Config.Username = result
+	jira.Config.Token = result
+	jira.Config.Cookies = nil
 
-	result, err = helpers.GetString("Enter your password", true)
-	if err != nil {
-		return jira
-	}
-	jira.Config.Password = result
-
-	jira = jira.authenticate()
+	currentUser, statusCode := jira.GetCurrentUser()
+	jira.isLoggedIn = statusCode == 200
 
 	if jira.isLoggedIn {
-		fmt.Printf("You sucessfully logged in %s as %s\n", jira.Config.Domain, jira.Config.Username)
+		if currentUser != nil {
+			fmt.Printf("You sucessfully logged in %s as %s\n", jira.Config.Domain, *currentUser)
+		} else {
+			fmt.Printf("You sucessfully logged in %s using access token\n", jira.Config.Domain)
+		}
+	} else {
+		helpers.LogFatal(fmt.Errorf("You not authorized, try to reauth"))
 	}
 
 	return jira
@@ -49,7 +50,7 @@ func (jira Jira) SelectIssue() JiraIssue {
 		"{{ .Key }} {{ printf \"-\" }} {{ printf \"%.35s...\" .Summary }}",
 	)
 	if err != nil {
-		os.Exit(1)
+		helpers.LogFatal(err)
 	}
 	return issues[index]
 }

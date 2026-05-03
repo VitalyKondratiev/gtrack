@@ -55,11 +55,12 @@ func (github Github) GetLastRelease() GithubRelease {
 			_child := child.(map[string]interface{})
 			contentType := _child["content_type"].(string)
 			downloadableFile := _child["browser_download_url"].(string)
-			if contentType == "application/octet-stream" {
+			switch contentType {
+			case "application/octet-stream":
 				platformFiles.linux = downloadableFile
-			} else if contentType == "application/x-ms-dos-executable" {
+			case "application/x-ms-dos-executable":
 				platformFiles.windows = downloadableFile
-			} else if contentType == "application/gzip" {
+			case "application/gzip":
 				platformFiles.darwin = downloadableFile
 			}
 		}

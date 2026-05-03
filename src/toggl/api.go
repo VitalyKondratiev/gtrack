@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -65,7 +64,7 @@ func (toggl Toggl) apiPostData(apiMethod string, payload []byte) ([]byte, int) {
 	req.SetBasicAuth(toggl.Config.ApiKey, "api_token")
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err.Error())
+		helpers.LogFatal(err)
 	}
 	defer resp.Body.Close()
 	data, _ := io.ReadAll(resp.Body)
@@ -168,7 +167,9 @@ func (toggl Toggl) GetTimeEntries() []TogglTimeEntry {
 	if statusCode == 200 {
 		err := json.Unmarshal(data, &timeEntries)
 		if err != nil {
-			log.Fatalf("Error parsing JSON: %v\nResponse:\n%v", err, string(data))
+			helpers.LogFatal(
+				fmt.Errorf("Error parsing JSON: %v\nResponse:\n%v", err, string(data)),
+			)
 		}
 		for i, entry := range timeEntries {
 			timeEntries[i].Description = toggl.getIssueKey(entry.Description)
@@ -225,6 +226,7 @@ func (toggl Toggl) CreateTag(tagName string) TogglWorkspaceTag {
 func (toggl Toggl) CreateProject(projectName string) TogglProject {
 	var project TogglProject
 	jsonObj := gabs.New()
+	jsonObj.SetP(true, "active")
 	jsonObj.SetP(projectName, "name")
 	method := fmt.Sprintf("workspaces/%d/projects", toggl.Config.WorkspaceId)
 	data, statusCode := toggl.apiPostData(method, jsonObj.Bytes())
@@ -236,24 +238,19 @@ func (toggl Toggl) CreateProject(projectName string) TogglProject {
 			)
 		}
 		project = TogglProject{
-			Id:   int(jsonParsed.S("data").Data().(map[string]interface{})["id"].(float64)),
-			Name: jsonParsed.S("data").Data().(map[string]interface{})["name"].(string),
+			Id:   int(jsonParsed.S("id").Data().(float64)),
+			Name: jsonParsed.S("name").Data().(string),
 		}
 	}
 	return project
 }
 
 func populateTimeEntry(workspaceId int, projectId int, description string, jiraTag string) *gabs.Container {
-	t := time.Now()
-	tZone, _ := t.Zone()
-	time := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d%02s:00",
-		t.Year(), t.Month(), t.Day(),
-		t.Hour(), t.Minute(), t.Second(), tZone)
 	jsonObj := gabs.New()
 	jsonObj.SetP(projectId, "project_id")
 	jsonObj.SetP(workspaceId, "wid")
 	jsonObj.SetP(description, "description")
-	jsonObj.SetP(time, "start")
+	jsonObj.SetP(time.Now().Format(time.RFC3339), "start")
 	jsonObj.SetP(-1, "duration")
 	jsonObj.SetP("gtrack", "created_with")
 	jsonObj.ArrayP("tags")

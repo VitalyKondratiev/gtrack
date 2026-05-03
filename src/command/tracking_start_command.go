@@ -56,19 +56,18 @@ func (cmd *trackingStartCommand) Execute() {
 			os.Exit(1)
 		} else {
 			var jiraIndexes []int
-			var issues []jira.JiraIssue
+			var issues = make(map[int]jira.JiraIssue)
 			for jiraIndex, _issue := range issuesByInstances {
 				jiraIndexes = append(jiraIndexes, jiraIndex)
-				issues = append(issues, _issue)
+				issues[jiraIndex] = _issue
 			}
 			var jiraIndex int
 			if len(issuesByInstances) > 1 {
 				jiraIndex = gconfig.SelectJiraInstance(jiraIndexes)
-				issue = issues[jiraIndex]
 			} else {
 				jiraIndex = jiraIndexes[0]
-				issue = issues[0]
 			}
+			issue = issues[jiraIndex]
 			_jira = jira.Jira{Config: gconfig.Jira[jiraIndex]}
 		}
 	}
